@@ -2,56 +2,44 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Consulta SLA por Dia</title>
+    <title>Consulta de SLA por Dia</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
+            background: #f7f7f7;
+            margin: 0;
             padding: 20px;
         }
 
         .container {
-            max-width: 1000px;
-            margin: auto;
-            background: #fff;
+            background: white;
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 900px;
+            margin: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         h2 {
             color: #D52B1E;
-            margin-bottom: 20px;
         }
 
-        input[type="file"], input[type="text"], button {
+        input, button {
             padding: 10px;
-            margin: 10px;
             font-size: 16px;
-        }
-
-        button {
-            background-color: #D52B1E;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 6px;
-        }
-
-        button:hover {
-            background-color: #B2221A;
+            margin-top: 10px;
         }
 
         table {
             width: 100%;
-            margin-top: 25px;
             border-collapse: collapse;
+            margin-top: 20px;
         }
 
         th, td {
-            padding: 10px;
             border: 1px solid #ddd;
+            padding: 10px;
             text-align: center;
         }
 
@@ -59,20 +47,30 @@
             background-color: #D52B1E;
             color: white;
         }
+
+        .ganho {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .perda {
+            background-color: #FF4D4D;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Painel de SLA por Dia</h2>
-        <input type="file" id="upload" accept=".xlsx">
-        <input type="text" id="login" placeholder="Digite a matrícula (login)">
-        <button onclick="consultarSLA()">Consultar</button>
+        <input type="file" id="upload" accept=".xlsx"><br>
+        <input type="text" id="login" placeholder="Digite o login (ex: N0238475)">
+        <button onclick="consultar()">Consultar</button>
 
         <div id="resultado"></div>
     </div>
 
     <script>
-        let dadosPlanilha = [];
+        let dados = [];
 
         document.getElementById('upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -80,85 +78,68 @@
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-
-                // Identificar aba que contenha 'data'
-                const sheetName = workbook.SheetNames.find(name => name.trim().toLowerCase().includes("data"));
-                if (!sheetName) {
-                    alert("A aba contendo 'Data' não foi encontrada na planilha.");
-                    return;
-                }
-
-                const sheet = workbook.Sheets[sheetName];
-                dadosPlanilha = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                alert("Planilha carregada com sucesso! Aba usada: " + sheetName);
+                const primeiraAba = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[primeiraAba];
+                dados = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                alert("Planilha carregada com sucesso!");
             };
             reader.readAsArrayBuffer(file);
         });
 
-        function consultarSLA() {
+        function consultar() {
             const login = document.getElementById("login").value.trim().toLowerCase();
-            if (!login || dadosPlanilha.length === 0) {
+            if (!login || dados.length === 0) {
                 alert("Digite o login e carregue a planilha!");
                 return;
             }
 
-            const resultados = {};
-            dadosPlanilha.forEach((row, i) => {
-                if (i === 0 || row.length < 9) return;
+            let porDia = {};
 
-                const dataRaw = row[2];
-                const matricula = (row[1] || "").toString().toLowerCase();
-                const tempo = parseFloat(row[4]) * 1440;
-                const hfc1 = row[5];
-                const hfc2 = row[6];
-                const gpon1 = row[7];
-                const gpon2 = row[8];
+            dados.forEach(row => {
+                let loginPlanilha = row["Login"]?.toString().trim().toLowerCase();
+                if (loginPlanilha === login) {
+                    let data = new Date(row["Data"]);
+                    let dia = data.toLocaleDateString('pt-BR');
 
-                if (!dataRaw || !matricula.includes(login)) return;
+                    let hfcVolume = parseInt(row["HFC - Volume"]);
+                    let hfcIndicador = parseInt(row["HFC - Indicador"]);
+                    let gponVolume = parseInt(row["Gpon - Volume"]);
+                    let gponIndicador = parseInt(row["Gpon - Indicador"]);
 
-                const dataFormatada = new Date(dataRaw).toLocaleDateString('pt-BR');
-                if (!resultados[dataFormatada]) {
-                    resultados[dataFormatada] = { ganhos: 0, perdas: 0, total: 0 };
-                }
+                    if (!porDia[dia]) {
+                        porDia[dia] = { ganhos: 0, perdas: 0, total: 0 };
+                    }
 
-                const hfc = (hfc1 == 1 && hfc2 == 1) ? 'Ganhou' : (hfc1 == 1 && hfc2 == 0) ? 'Perdeu' : 'Ignorado';
-                const gpon = (gpon1 == 1 && gpon2 == 1) ? 'Ganhou' : (gpon1 == 1 && gpon2 == 0) ? 'Perdeu' : 'Ignorado';
+                    let ganho = (hfcVolume === 1 && hfcIndicador === 1) || (gponVolume === 1 && gponIndicador === 1);
+                    let perda = (hfcVolume === 1 && hfcIndicador === 0) || (gponVolume === 1 && gponIndicador === 0);
 
-                if (hfc === 'Ganhou' || gpon === 'Ganhou') {
-                    resultados[dataFormatada].ganhos++;
-                    resultados[dataFormatada].total++;
-                } else if (hfc === 'Perdeu' || gpon === 'Perdeu') {
-                    resultados[dataFormatada].perdas++;
-                    resultados[dataFormatada].total++;
+                    if (ganho) porDia[dia].ganhos++;
+                    else if (perda) porDia[dia].perdas++;
+
+                    if (ganho || perda) porDia[dia].total++;
                 }
             });
 
-            let html = `<table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Outages</th>
-                        <th>Ganhos (%)</th>
-                        <th>Perdas (%)</th>
-                    </tr>
-                </thead>
-                <tbody>`;
+            // Montar tabela de resultado
+            let html = "<h3>Percentuais de Ganhos e Perdas por Dia</h3>";
+            html += `<table>
+                        <tr><th>Data</th><th>Outages</th><th>Ganhos (%)</th><th>Perdas (%)</th></tr>`;
 
-            Object.entries(resultados).forEach(([data, valores]) => {
-                const { ganhos, perdas, total } = valores;
-                const pctGanhos = total ? ((ganhos / total) * 100).toFixed(1) : 0;
-                const pctPerdas = total ? ((perdas / total) * 100).toFixed(1) : 0;
-                html += `
-                    <tr>
-                        <td>${data}</td
-                        <td>${total}</td>
-                        <td>${pctGanhos}%</td>
-                        <td>${pctPerdas}%</td>
-                    </tr>
-                `;
-            });
+            for (let dia in porDia) {
+                const dadosDia = porDia[dia];
+                const ganhosPerc = dadosDia.total > 0 ? ((dadosDia.ganhos / dadosDia.total) * 100).toFixed(2) : "0";
+                const perdasPerc = dadosDia.total > 0 ? ((dadosDia.perdas / dadosDia.total) * 100).toFixed(2) : "0";
 
-            html += "</tbody></table>";
+                html += `<tr>
+                            <td>${dia}</td>
+                            <td>${dadosDia.total}</td>
+                            <td class="ganho">${ganhosPerc}%</td>
+                            <td class="perda">${perdasPerc}%</td>
+                         </tr>`;
+            }
+
+            html += `</table>`;
+
             document.getElementById("resultado").innerHTML = html;
         }
     </script>
