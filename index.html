@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta de Outages - Percentual por Dia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h2, h3 {
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 8px;
+            margin-right: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 15px;
+            width: 100%;
+        }
+        th, td {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        #tabelaPorcentagens {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Consulta de Ganhos e Perdas por Login</h2>
+
+    <input type="file" id="upload" accept=".xlsx" />
+    <input type="text" id="login" placeholder="Digite o login" />
+    <button onclick="consultarSLA()">Consultar</button>
+
+    <div id="tabelaPorcentagens">
+        <h3>Percentual de Ganhos e Perdas por Dia:</h3>
+        <table>
+            <thead>
+                <tr><th>Data</th><th>% Ganhos</th><th>% Perdas</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        let dadosPlanilha = [];
+
+        document.getElementById('upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets["Data"];
+                dadosPlanilha = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                alert("Planilha carregada com sucesso!");
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function consultarSLA() {
+            const login = document.getElementById('login').value.trim().toLowerCase();
+            if (!login) {
+                alert("Digite um login!");
+                return;
+            }
+
+            let registros = [];
+
+            dadosPlanilha.forEach(row => {
+                if (!row || row.length < 9) return;
+                let outage = String(row[0]);
+                let usuario = String(row[1] || "").toLowerCase();
+                if (!usuario.includes(login)) return;
+                if (outage.startsWith("0")) return;
+
+                let data = new Date(row[2]);
+                let dia = data.toLocaleDateString('pt-BR');
+                let hfcVol = row[5], hfcInd = row[6], gponVol = row[7], gponInd = row[8];
+
+                let status = "Ignorado";
+                if (hfcVol == 1 && hfcInd == 1) status = "Ganho";
+                else if (hfcVol == 1 && hfcInd == 0) status = "Perda";
+                else if (gponVol == 1 && gponInd == 1) status = "Ganho";
+                else if (gponVol == 1 && gponInd == 0) status = "Perda";
+
+                if (status !== "Ignorado") {
+                    registros.push({ dia, status });
+                }
+            });
+
+            const resumo = {};
+            registros.forEach(({ dia, status }) => {
+                if (!resumo[dia]) resumo[dia] = { total: 0, ganhos: 0, perdas: 0 };
+                resumo[dia].total += 1;
+                if (status === "Ganho") resumo[dia].ganhos += 1;
+                if (status === "Perda") resumo[dia].perdas += 1;
+            });
+
+            const tabela = document.querySelector("#tabelaPorcentagens tbody");
+            tabela.innerHTML = "";
+
+            Object.keys(resumo).sort().forEach(dia => {
+                let linha = tabela.insertRow();
+                let cellData = linha.insertCell();
+                let cellGanho = linha.insertCell();
+                let cellPerda = linha.insertCell();
+
+                let total = resumo[dia].total;
+                let pctGanho = ((resumo[dia].ganhos / total) * 100).toFixed(2);
+                let pctPerda = ((resumo[dia].perdas / total) * 100).toFixed(2);
+
+                cellData.textContent = dia;
+                cellGanho.textContent = `${pctGanho}%`;
+                cellPerda.textContent = `${pctPerda}%`;
+            });
+        }
+    </script>
+</body>
+</html>
