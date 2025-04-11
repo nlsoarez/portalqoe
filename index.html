@@ -81,16 +81,16 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
 
-                // Buscar aba chamada "Data" com tolerância
-                const sheetName = workbook.SheetNames.find(name => name.trim().toLowerCase() === "data");
+                // Identificar aba que contenha 'data'
+                const sheetName = workbook.SheetNames.find(name => name.trim().toLowerCase().includes("data"));
                 if (!sheetName) {
-                    alert("A aba 'Data' não foi encontrada na planilha.");
+                    alert("A aba contendo 'Data' não foi encontrada na planilha.");
                     return;
                 }
 
                 const sheet = workbook.Sheets[sheetName];
                 dadosPlanilha = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                alert("Planilha carregada com sucesso!");
+                alert("Planilha carregada com sucesso! Aba usada: " + sheetName);
             };
             reader.readAsArrayBuffer(file);
         });
@@ -104,7 +104,7 @@
 
             const resultados = {};
             dadosPlanilha.forEach((row, i) => {
-                if (i === 0 || row.length < 9) return; // Ignorar cabeçalho
+                if (i === 0 || row.length < 9) return;
 
                 const dataRaw = row[2];
                 const matricula = (row[1] || "").toString().toLowerCase();
@@ -133,7 +133,6 @@
                 }
             });
 
-            // Montar tabela
             let html = `<table>
                 <thead>
                     <tr>
@@ -151,7 +150,7 @@
                 const pctPerdas = total ? ((perdas / total) * 100).toFixed(1) : 0;
                 html += `
                     <tr>
-                        <td>${data}</td>
+                        <td>${data}</td
                         <td>${total}</td>
                         <td>${pctGanhos}%</td>
                         <td>${pctPerdas}%</td>
