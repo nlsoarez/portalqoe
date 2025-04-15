@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Análise de SLA (Até 30 min)</title>
+  <title>Análise de Outages</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
@@ -80,26 +80,22 @@
     .outage-card span {
       font-size: 14px;
     }
-    @media (max-width: 600px) {
-      .container {
-        width: 100%;
-        padding: 15px;
-      }
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Análise de SLA</h2>
+    <h2>Análise de Outages</h2>
     <input type="file" id="fileInput" />
     <button onclick="analisarPlanilha()">Analisar</button>
 
     <div class="resultados">
-      <p><strong>Casos Fora do SLA com até 30 minutos:</strong> <span id="casosPerdidos30">0</span></p>
+      <p><strong>Casos Ganhos:</strong> <span id="casosGanho">0</span></p>
+      <p><strong>Casos Perdidos:</strong> <span id="casosPerdidos">0</span></p>
+      <p><strong>Casos Perdidos em até 30 minutos:</strong> <span id="casosPerdidos30">0</span> (<span id="percentagem30">0</span>%)</p>
     </div>
 
     <div class="outage-container">
-      <h3>Detalhes dos Casos Fora do SLA (≤ 30 min):</h3>
+      <h3>Outages Perdidos em até 30 minutos:</h3>
       <div class="outage-cards" id="outagesLista"></div>
     </div>
   </div>
@@ -110,72 +106,68 @@
     }
 
     function analisarPlanilha() {
-      let fileInput = document.getElementById('fileInput').files[0];
-      if (!fileInput) {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) {
         alert("Por favor, selecione um arquivo Excel.");
         return;
       }
 
-      let reader = new FileReader();
-      reader.onload = function(event) {
-        let data = new Uint8Array(event.target.result);
-        let workbook = XLSX.read(data, { type: 'array' });
-        let sheet = workbook.Sheets[workbook.SheetNames[0]];
-        let jsonData = XLSX.utils.sheet_to_json(sheet);
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
 
-        let foraSLA30min = 0;
-        let registrosForaSLA = [];
+        let ganhos = 0;
+        let perdidos = 0;
+        let perdidos30 = 0;
+        let perdidosDetalhes = [];
 
-        jsonData.forEach(row => {
-          const outage = String(row["Outage"] || "").trim();
-          if (!outage || outage.startsWith("0")) return;
+        rows.forEach(row => {
+          const volume = Number(row["Volume"]);
+          const indicador = Number(row["Indicador"]);
+          const inicioRaw = row["Inicio"];
+          const fimRaw = row["Fim"];
 
-          const colF = Number(row["F"]);
-          const colG = Number(row["G"]);
-          if (!(colF === 1 && colG === 0)) return;
+          const ganhou = volume === 1 && indicador === 1;
+          const perdeu = volume === 1 && indicador === 0;
 
-          let inicioRaw = row["Inicio"];
-          let fimRaw = row["Fim"];
-          let tempoMin = null;
+          if (ganhou) ganhos++;
+          if (perdeu) {
+            perdidos++;
 
-          if (inicioRaw && fimRaw) {
-            try {
-              let inicio = !isNaN(inicioRaw) ? excelDateToJSDate(inicioRaw) : new Date(inicioRaw);
-              let fim = !isNaN(fimRaw) ? excelDateToJSDate(fimRaw) : new Date(fimRaw);
-              tempoMin = (fim - inicio) / (1000 * 60);
-            } catch (e) {
-              console.warn("Erro ao converter datas:", e);
+            let inicio = !isNaN(inicioRaw) ? excelDateToJSDate(inicioRaw) : new Date(inicioRaw);
+            let fim = !isNaN(fimRaw) ? excelDateToJSDate(fimRaw) : new Date(fimRaw);
+            let duracao = (fim - inicio) / 60000;
+
+            if (duracao > 0 && duracao <= 30) {
+              perdidos30++;
+              perdidosDetalhes.push({
+                outage: row["Outage"] || "Sem número",
+                tempo: duracao.toFixed(2)
+              });
             }
           }
-
-          if (tempoMin !== null && tempoMin > 0 && tempoMin <= 30) {
-            foraSLA30min++;
-            registrosForaSLA.push({
-              outageNum: outage,
-              tempo: tempoMin.toFixed(2),
-              inicio: inicioRaw,
-              fim: fimRaw
-            });
-          }
         });
 
-        document.getElementById("casosPerdidos30").innerText = foraSLA30min;
+        let porcentagem = perdidos > 0 ? ((perdidos30 / perdidos) * 100).toFixed(2) : 0;
 
-        let outagesLista = document.getElementById("outagesLista");
-        outagesLista.innerHTML = "";
-        registrosForaSLA.forEach(({ outageNum, tempo, inicio, fim }) => {
-          let div = document.createElement("div");
-          div.className = "outage-card";
-          div.innerHTML = `
-            <div><strong>${outageNum}</strong></div>
-            <div><span>Tempo: ${tempo} min</span></div>
-            <div><span>Início: ${inicio}</span></div>
-            <div><span>Fim: ${fim}</span></div>
-          `;
-          outagesLista.appendChild(div);
+        document.getElementById("casosGanho").innerText = ganhos;
+        document.getElementById("casosPerdidos").innerText = perdidos;
+        document.getElementById("casosPerdidos30").innerText = perdidos30;
+        document.getElementById("percentagem30").innerText = porcentagem;
+
+        const lista = document.getElementById("outagesLista");
+        lista.innerHTML = "";
+        perdidosDetalhes.forEach(item => {
+          const card = document.createElement("div");
+          card.className = "outage-card";
+          card.innerHTML = `<div><strong>${item.outage}</strong></div><div><span>Tempo: ${item.tempo} min</span></div>`;
+          lista.appendChild(card);
         });
       };
-      reader.readAsArrayBuffer(fileInput);
+      reader.readAsArrayBuffer(file);
     }
   </script>
 </body>
