@@ -1,174 +1,759 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Análise de Outages</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      width: 90%;
-      max-width: 800px;
-      text-align: center;
-    }
-    h2, h3 {
-      color: #D6001C;
-    }
-    input[type="file"] {
-      display: block;
-      margin: 10px auto;
-      font-size: 16px;
-    }
-    button {
-      background-color: #D6001C;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      font-size: 16px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background-color: #A80017;
-    }
-    .resultados {
-      margin-top: 20px;
-      padding: 15px;
-      background: #fff5f5;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    .resultados p {
-      font-size: 18px;
-      margin: 5px 0;
-    }
-    .outage-container {
-      margin-top: 20px;
-    }
-    .outage-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-    .outage-card {
-      background: #D6001C;
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      text-align: center;
-      font-size: 16px;
-      font-weight: bold;
-    }
-    .outage-card span {
-      font-size: 14px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel ETIT Empresarial</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f2f2f2; 
+            margin: 0;
+            padding: 0;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+        }
+        .input-group { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, button { 
+            padding: 10px; 
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #D52B1E;
+            color: white;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #B02218;
+        }
+        .table-container { 
+            max-height: 300px; 
+            overflow-y: auto; 
+            margin: 20px 0; 
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+        th, td { 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            text-align: left;
+        }
+        th { 
+            background-color: #D52B1E; 
+            color: white; 
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .dentro { background-color: rgba(76, 175, 80, 0.1); }
+        .fora { background-color: rgba(255, 77, 77, 0.1); }
+        .meta-atingida { color: green; font-weight: bold; }
+        .meta-nao-atingida { color: red; font-weight: bold; }
+        .acima-media { color: blue; font-weight: bold; }
+        .abaixo-media { color: orange; font-weight: bold; }
+        .spinner { 
+            display: none; 
+            font-size: 18px; 
+            text-align: center;
+            padding: 20px;
+        }
+        .result-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            margin: 30px 0;
+            height: 300px;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .sla-dentro { color: #2ecc71; font-weight: bold; }
+        .sla-fora { color: #e74c3c; font-weight: bold; }
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 10px;
+            }
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Análise de Outages</h2>
-    <input type="file" id="fileInput" />
-    <button onclick="analisarPlanilha()">Analisar</button>
-
-    <div class="resultados">
-      <p><strong>Casos Ganhos:</strong> <span id="casosGanho">0</span></p>
-      <p><strong>Casos Perdidos:</strong> <span id="casosPerdidos">0</span></p>
-      <p><strong>Casos Perdidos em até 30 minutos:</strong> <span id="casosPerdidos30">0</span> (<span id="percentagem30">0</span>%)</p>
+    <div class="container">
+        <h2>Painel ETIT Empresarial</h2>
+        
+        <div class="input-group">
+            <input type="file" id="upload" accept=".xlsx,.xls" aria-label="Selecione o arquivo Excel">
+            <input type="text" id="matricula" placeholder="Digite a matrícula" aria-label="Digite a matrícula">
+            <button id="consultarBtn">Consultar</button>
+            <button id="limparBtn">Limpar</button>
+            <button id="exportarBtn">Exportar</button>
+        </div>
+        
+        <div class="spinner" id="spinner">
+            <div>⏳ Processando dados, por favor aguarde...</div>
+            <progress id="progress" max="100" value="0" style="width:100%"></progress>
+        </div>
+        
+        <div id="resultado"></div>
+        <div id="mediaEquipe"></div>
+        
+        <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </div>
+        
+        <div class="table-container">
+            <h3>Incidentes Dentro do SLA</h3>
+            <table id="tabelaDentro">
+                <thead>
+                    <tr>
+                        <th>Incidente</th>
+                        <th>Tipo</th>
+                        <th>Tempo (min)</th>
+                        <th>Analista</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div class="table-container">
+            <h3>Incidentes Fora do SLA</h3>
+            <table id="tabelaFora">
+                <thead>
+                    <tr>
+                        <th>Incidente</th>
+                        <th>Tipo</th>
+                        <th>Tempo (min)</th>
+                        <th>Analista</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
-    <div class="outage-container">
-      <h3>Outages Perdidos em até 30 minutos:</h3>
-      <div class="outage-cards" id="outagesLista"></div>
-    </div>
-  </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let dados = [];
+            let performanceChart = null;
+            const matriculaToNome = {
+                "N5713690": "ANALISTA 1",
+                "F201714": "ANALISTA 2",
+                "N5604148": "ANALISTA 3",
+                "N5802257": "ANALISTA 4"
+            };
 
-  <script>
-    function excelDateToJSDate(serial) {
-      return new Date((serial - 25569) * 86400 * 1000);
-    }
+            // Elementos do DOM
+            const uploadInput = document.getElementById('upload');
+            const consultarBtn = document.getElementById('consultarBtn');
+            const limparBtn = document.getElementById('limparBtn');
+            const exportarBtn = document.getElementById('exportarBtn');
+            const mediaEquipeDiv = document.getElementById('mediaEquipe');
+            const resultadoDiv = document.getElementById('resultado');
 
-    function analisarPlanilha() {
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) {
-        alert("Por favor, selecione um arquivo Excel.");
-        return;
-      }
+            // Event Listeners
+            uploadInput.addEventListener('change', handleFileUpload);
+            consultarBtn.addEventListener('click', consultarETIT);
+            limparBtn.addEventListener('click', limparDados);
+            exportarBtn.addEventListener('click', exportarParaExcel);
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
 
-        let ganhos = 0;
-        let perdidos = 0;
-        let perdidos30 = 0;
-        let perdidosDetalhes = [];
-
-        rows.forEach(row => {
-          const volume = Number(row["Volume"]);
-          const indicador = Number(row["Indicador"]);
-          const inicioRaw = row["Inicio"];
-          const fimRaw = row["Fim"];
-
-          const ganhou = volume === 1 && indicador === 1;
-          const perdeu = volume === 1 && indicador === 0;
-
-          if (ganhou) ganhos++;
-          if (perdeu) {
-            perdidos++;
-
-            let inicio = !isNaN(inicioRaw) ? excelDateToJSDate(inicioRaw) : new Date(inicioRaw);
-            let fim = !isNaN(fimRaw) ? excelDateToJSDate(fimRaw) : new Date(fimRaw);
-            let duracao = (fim - inicio) / 60000;
-
-            if (duracao > 0 && duracao <= 30) {
-              perdidos30++;
-              perdidosDetalhes.push({
-                outage: row["Outage"] || "Sem número",
-                tempo: duracao.toFixed(2)
-              });
+                showSpinner();
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        if (workbook.SheetNames.length === 0) {
+                            throw new Error("O arquivo Excel não contém planilhas.");
+                        }
+                        
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                        
+                        if (rawData.length < 2 || rawData[0].length < 7) {
+                            throw new Error("Formato de planilha inválido. Certifique-se de que contém todas as colunas necessárias.");
+                        }
+                        
+                        processDataInBatches(rawData, 1000);
+                        
+                    } catch (error) {
+                        hideSpinner();
+                        alert(`Erro ao processar o arquivo: ${error.message}`);
+                        console.error(error);
+                        limparDados();
+                    }
+                };
+                
+                reader.onerror = function() {
+                    hideSpinner();
+                    alert("Erro ao ler o arquivo. Por favor, tente novamente.");
+                    limparDados();
+                };
+                
+                reader.readAsArrayBuffer(file);
             }
-          }
+
+            function parseExcelDate(excelDate) {
+                // Se for um número (formato de data do Excel)
+                if (typeof excelDate === 'number') {
+                    const date = new Date((excelDate - (25567 + 2)) * 86400 * 1000);
+                    return isNaN(date.getTime()) ? null : date;
+                }
+                
+                // Se for string, tenta parsear como data
+                const date = new Date(excelDate);
+                return isNaN(date.getTime()) ? null : date;
+            }
+
+            function processDataInBatches(rawData, batchSize) {
+                // Resetar completamente os dados
+                dados = [];
+                const totalRows = rawData.length - 1; // Excluindo cabeçalho
+                let processedRows = 0;
+                
+                function processBatch(start) {
+                    const end = Math.min(start + batchSize, rawData.length);
+                    
+                    for (let i = start; i < end; i++) {
+                        if (i === 0) continue; // Pular cabeçalho
+                        
+                        const row = rawData[i];
+                        if (row && row.length >= 7) {
+                            // Calcula o tempo entre Coluna D (Fim) e Coluna C (Inicio)
+                            let tempoMinutos = 0;
+                            try {
+                                const inicio = parseExcelDate(row[2]);
+                                const fim = parseExcelDate(row[3]);
+                                
+                                if (inicio && fim) {
+                                    tempoMinutos = (fim - inicio) / (1000 * 60); // Diferença em minutos
+                                }
+                            } catch (e) {
+                                console.warn("Erro ao calcular tempo:", e);
+                            }
+                            
+                            // Determina o SLA baseado no Indicador (coluna G)
+                            const dentroSLA = row[6] === 1 || row[6] === "1"; // Indicador = 1 (Dentro), 0 (Fora)
+                            const tipo = row[0] ? (row[0].toString().startsWith("RAL") ? "RAL" : 
+                                                 row[0].toString().startsWith("REC") ? "REC" : "OUTRO") : "OUTRO";
+                            
+                            dados.push([
+                                row[0]?.toString().trim() || "N/A",     // Incidente
+                                row[1]?.toString().trim().toUpperCase() || "N/A", // Matrícula
+                                dentroSLA,                              // Dentro SLA
+                                tipo,                                   // Tipo (RAL/REC)
+                                tempoMinutos                            // Tempo em minutos
+                            ]);
+                        }
+                        processedRows++;
+                        updateProgress(processedRows, totalRows);
+                    }
+                    
+                    if (end < rawData.length) {
+                        setTimeout(() => processBatch(end), 0);
+                    } else {
+                        finalizeProcessing();
+                    }
+                }
+                
+                processBatch(1);
+            }
+
+            function updateProgress(processed, total) {
+                const progress = document.getElementById('progress');
+                if (progress) {
+                    progress.value = (processed / total) * 100;
+                }
+            }
+
+            function finalizeProcessing() {
+                localStorage.setItem("dadosPlanilha", JSON.stringify(dados));
+                hideSpinner();
+                
+                // Exibir estatísticas reais dos dados processados
+                const totalIncidents = dados.length;
+                alert(`Planilha carregada com sucesso! ${totalIncidents} incidentes processados.`);
+                
+                updateTeamStats();
+            }
+
+            function updateTeamStats() {
+                if (!mediaEquipeDiv) return;
+                
+                if (!dados || dados.length === 0) {
+                    mediaEquipeDiv.innerHTML = "";
+                    return;
+                }
+                
+                // Calcular estatísticas reais
+                const totalIncidents = dados.length;
+                const dentroSLA = dados.filter(row => row[2]).length;
+                const foraSLA = totalIncidents - dentroSLA;
+                const percentualSLA = (dentroSLA / totalIncidents * 100).toFixed(2);
+                
+                // Analistas únicos
+                const analistasUnicos = [...new Set(dados.map(row => row[1]))];
+                const numAnalistas = analistasUnicos.length;
+                const mediaPorAnalista = numAnalistas > 0 ? (totalIncidents / numAnalistas).toFixed(2) : 0;
+                
+                // Exibir apenas os dados calculados
+                mediaEquipeDiv.innerHTML = `
+                    <div class="result-card">
+                        <h3>Estatísticas Gerais da Equipe</h3>
+                        <div class="stats-container">
+                            <div class="stat-card">
+                                <div>Total de Incidentes</div>
+                                <div class="stat-value">${totalIncidents}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Dentro do SLA</div>
+                                <div class="stat-value sla-dentro">${dentroSLA}</div>
+                                <div>${percentualSLA}%</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Fora do SLA</div>
+                                <div class="stat-value sla-fora">${foraSLA}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Analistas</div>
+                                <div class="stat-value">${numAnalistas}</div>
+                                <div>Média: ${mediaPorAnalista}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function consultarETIT() {
+                if (!dados || dados.length === 0) {
+                    const storedData = localStorage.getItem("dadosPlanilha");
+                    if (storedData) {
+                        try {
+                            dados = JSON.parse(storedData);
+                            if (!Array.isArray(dados) || dados.length === 0) {
+                                alert("Por favor, carregue uma planilha válida primeiro.");
+                                return;
+                            }
+                        } catch (e) {
+                            alert("Dados corrompidos. Por favor, carregue a planilha novamente.");
+                            return;
+                        }
+                    } else {
+                        alert("Por favor, carregue uma planilha primeiro.");
+                        return;
+                    }
+                }
+
+                const input = document.getElementById('matricula')?.value.trim().toUpperCase();
+                if (!input) {
+                    alert("Por favor, digite uma matrícula para consultar.");
+                    return;
+                }
+
+                showSpinner();
+                
+                setTimeout(() => {
+                    try {
+                        const result = processAnalystData(input);
+                        if (result) {
+                            displayResults(result);
+                        }
+                    } catch (error) {
+                        alert("Erro ao processar consulta: " + error.message);
+                        console.error(error);
+                    } finally {
+                        hideSpinner();
+                    }
+                }, 100);
+            }
+
+            function processAnalystData(input) {
+                let nomeAnalista, matricula;
+                
+                // Verificar se é matrícula conhecida
+                if (matriculaToNome[input]) {
+                    matricula = input;
+                    nomeAnalista = matriculaToNome[input];
+                } 
+                // Busca por matrícula não mapeada
+                else {
+                    // Verifica se a matrícula existe nos dados
+                    const matriculasExistentes = [...new Set(dados.map(row => row[1]))];
+                    if (matriculasExistentes.includes(input)) {
+                        matricula = input;
+                        nomeAnalista = input; // Usa a matrícula como nome se não estiver mapeada
+                    } else {
+                        alert("Matrícula não encontrada nos dados.");
+                        return null;
+                    }
+                }
+
+                const dentro = [];
+                const fora = [];
+                let totalDentroSLA = 0;
+                let totalTratado = 0;
+                let totalTempoDentro = 0;
+                let totalTempoFora = 0;
+
+                for (const row of dados) {
+                    if (row[1] === matricula) {
+                        if (row[2]) {
+                            dentro.push([row[0], row[3], Math.round(row[4]), nomeAnalista]);
+                            totalDentroSLA++;
+                            totalTempoDentro += row[4];
+                        } else {
+                            fora.push([row[0], row[3], Math.round(row[4]), nomeAnalista]);
+                            totalTempoFora += row[4];
+                        }
+                        totalTratado++;
+                    }
+                }
+
+                const mediaEquipe = calcularMediaEquipe();
+                const slaPercentual = totalTratado > 0 ? ((totalDentroSLA / totalTratado) * 100).toFixed(2) : 0;
+                const tempoMedioDentro = totalDentroSLA > 0 ? (totalTempoDentro / totalDentroSLA).toFixed(1) : 0;
+                const tempoMedioFora = fora.length > 0 ? (totalTempoFora / fora.length).toFixed(1) : 0;
+                
+                return {
+                    nomeAnalista,
+                    matricula,
+                    dentro,
+                    fora,
+                    totalDentroSLA,
+                    totalTratado,
+                    mediaEquipe,
+                    slaPercentual,
+                    tempoMedioDentro,
+                    tempoMedioFora
+                };
+            }
+
+            function displayResults(result) {
+                if (!resultadoDiv) return;
+                
+                const {
+                    nomeAnalista,
+                    matricula,
+                    dentro,
+                    fora,
+                    totalDentroSLA,
+                    totalTratado,
+                    mediaEquipe,
+                    slaPercentual,
+                    tempoMedioDentro,
+                    tempoMedioFora
+                } = result;
+                
+                const comparativo = totalTratado >= mediaEquipe ? "acima-media" : "abaixo-media";
+                const slaMeta = slaPercentual >= 80 ? "meta-atingida" : "meta-nao-atingida";
+                
+                resultadoDiv.innerHTML = `
+                    <div class="result-card">
+                        <h3>Resultado para: ${nomeAnalista} (${matricula})</h3>
+                        <div class="stats-container">
+                            <div class="stat-card">
+                                <div>Dentro do SLA</div>
+                                <div class="stat-value sla-dentro">${totalDentroSLA}</div>
+                                <div>${slaPercentual}%</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Fora do SLA</div>
+                                <div class="stat-value sla-fora">${fora.length}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Total Tratado</div>
+                                <div class="stat-value">${totalTratado}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Tempo Médio (Dentro)</div>
+                                <div class="stat-value">${tempoMedioDentro} min</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Tempo Médio (Fora)</div>
+                                <div class="stat-value">${tempoMedioFora} min</div>
+                            </div>
+                        </div>
+                        <p><strong>Meta SLA:</strong> 
+                            <span class="${slaMeta}">${slaPercentual}% (Meta: 80%)</span>
+                        </p>
+                        <p><strong>Comparação com a Média:</strong> 
+                            <span class="${comparativo}">${totalTratado >= mediaEquipe ? "Acima" : "Abaixo"} da média (${mediaEquipe})</span>
+                        </p>
+                    </div>
+                `;
+                
+                atualizarTabela("tabelaDentro", dentro, "dentro");
+                atualizarTabela("tabelaFora", fora, "fora");
+                updateChart(nomeAnalista, totalDentroSLA, fora.length, mediaEquipe);
+            }
+
+            function calcularMediaEquipe() {
+                if (!dados || dados.length === 0) return 0;
+                
+                const contagemPorAnalista = {};
+                
+                for (const row of dados) {
+                    const matricula = row[1];
+                    contagemPorAnalista[matricula] = (contagemPorAnalista[matricula] || 0) + 1;
+                }
+                
+                const numAnalistas = Object.keys(contagemPorAnalista).length;
+                if (numAnalistas === 0) return 0;
+                
+                const totalIncidentes = dados.length;
+                return (totalIncidentes / numAnalistas).toFixed(2);
+            }
+
+            function atualizarTabela(idTabela, tableData, rowClass) {
+                const tabela = document.getElementById(idTabela)?.getElementsByTagName('tbody')[0];
+                if (!tabela) return;
+                
+                tabela.innerHTML = "";
+                
+                if (!tableData || tableData.length === 0) {
+                    const row = tabela.insertRow();
+                    const cell = row.insertCell(0);
+                    cell.colSpan = 4;
+                    cell.textContent = "Nenhum incidente encontrado";
+                    cell.style.textAlign = "center";
+                    return;
+                }
+                
+                tableData.forEach(item => {
+                    const row = tabela.insertRow();
+                    row.className = rowClass;
+                    for (let i = 0; i < 4; i++) {
+                        const cell = row.insertCell(i);
+                        cell.textContent = item[i] || "N/A";
+                    }
+                });
+            }
+
+            function updateChart(nomeAnalista, dentro, fora, mediaEquipe) {
+                const canvas = document.getElementById('performanceChart');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                
+                if (performanceChart) {
+                    performanceChart.destroy();
+                }
+                
+                performanceChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Dentro SLA', 'Fora SLA', 'Média Equipe'],
+                        datasets: [{
+                            label: nomeAnalista,
+                            data: [dentro, fora, mediaEquipe],
+                            backgroundColor: [
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(54, 162, 235, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Quantidade de Incidentes'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Desempenho do Analista',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+
+            function exportarParaExcel() {
+                if (!dados || dados.length === 0) {
+                    alert("Nenhum dado para exportar. Carregue uma planilha primeiro.");
+                    return;
+                }
+
+                const input = document.getElementById('matricula')?.value.trim().toUpperCase();
+                if (!input) {
+                    alert("Por favor, digite uma matrícula para exportar os dados.");
+                    return;
+                }
+
+                try {
+                    // Filtra os dados para o analista específico
+                    const dadosAnalista = dados.filter(row => row[1] === input);
+                    
+                    if (dadosAnalista.length === 0) {
+                        alert("Nenhum dado encontrado para a matrícula informada.");
+                        return;
+                    }
+
+                    // Prepara os dados para exportação
+                    const dadosExportacao = dadosAnalista.map(row => ({
+                        'Incidente': row[0],
+                        'Tipo': row[3],
+                        'Tempo (min)': Math.round(row[4]),
+                        'SLA': row[2] ? "Dentro" : "Fora"
+                    }));
+
+                    // Calcula estatísticas
+                    const dentroSLA = dadosAnalista.filter(row => row[2]).length;
+                    const foraSLA = dadosAnalista.length - dentroSLA;
+                    const percentualSLA = (dentroSLA / dadosAnalista.length * 100).toFixed(2);
+                    
+                    const tempoTotalDentro = dadosAnalista.filter(row => row[2]).reduce((sum, row) => sum + row[4], 0);
+                    const tempoTotalFora = dadosAnalista.filter(row => !row[2]).reduce((sum, row) => sum + row[4], 0);
+                    const tempoMedioDentro = dentroSLA > 0 ? (tempoTotalDentro / dentroSLA).toFixed(1) : 0;
+                    const tempoMedioFora = foraSLA > 0 ? (tempoTotalFora / foraSLA).toFixed(1) : 0;
+
+                    // Cria uma nova planilha
+                    const wb = XLSX.utils.book_new();
+                    
+                    // Adiciona os dados dos tickets
+                    const wsDados = XLSX.utils.json_to_sheet(dadosExportacao);
+                    XLSX.utils.book_append_sheet(wb, wsDados, "Tickets");
+                    
+                    // Adiciona uma planilha com estatísticas
+                    const estatisticas = [
+                        ['Estatísticas', 'Valor'],
+                        ['Total de Tickets', dadosAnalista.length],
+                        ['Dentro do SLA', dentroSLA],
+                        ['Fora do SLA', foraSLA],
+                        ['Percentual SLA', `${percentualSLA}%`],
+                        ['Tempo Médio Dentro SLA (min)', tempoMedioDentro],
+                        ['Tempo Médio Fora SLA (min)', tempoMedioFora]
+                    ];
+                    
+                    const wsStats = XLSX.utils.aoa_to_sheet(estatisticas);
+                    XLSX.utils.book_append_sheet(wb, wsStats, "Estatísticas");
+                    
+                    // Gera o arquivo Excel
+                    const nomeArquivo = `ETIT_Empresarial_${input}_${new Date().toISOString().slice(0,10)}.xlsx`;
+                    XLSX.writeFile(wb, nomeArquivo);
+                    
+                    alert("Dados exportados com sucesso!");
+                } catch (error) {
+                    console.error("Erro ao exportar:", error);
+                    alert("Ocorreu um erro ao exportar os dados.");
+                }
+            }
+
+            function limparDados() {
+                dados = [];
+                localStorage.removeItem("dadosPlanilha");
+                
+                if (mediaEquipeDiv) mediaEquipeDiv.innerHTML = "";
+                if (resultadoDiv) resultadoDiv.innerHTML = "";
+                
+                const elementsToClear = [
+                    'matricula', 'upload',
+                    'tabelaDentro', 'tabelaFora'
+                ];
+                
+                elementsToClear.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (!element) return;
+                    
+                    if (element.tagName === 'INPUT') {
+                        element.value = "";
+                    } else if (id.startsWith('tabela')) {
+                        const tbody = element.getElementsByTagName('tbody')[0];
+                        if (tbody) tbody.innerHTML = "";
+                    }
+                });
+                
+                if (performanceChart) {
+                    performanceChart.destroy();
+                    performanceChart = null;
+                }
+            }
+
+            function showSpinner() {
+                const spinner = document.getElementById('spinner');
+                if (spinner) spinner.style.display = "block";
+            }
+
+            function hideSpinner() {
+                const spinner = document.getElementById('spinner');
+                if (spinner) spinner.style.display = "none";
+            }
+
+            // Inicialização - garantir estado limpo
+            limparDados();
         });
-
-        let porcentagem = perdidos > 0 ? ((perdidos30 / perdidos) * 100).toFixed(2) : 0;
-
-        document.getElementById("casosGanho").innerText = ganhos;
-        document.getElementById("casosPerdidos").innerText = perdidos;
-        document.getElementById("casosPerdidos30").innerText = perdidos30;
-        document.getElementById("percentagem30").innerText = porcentagem;
-
-        const lista = document.getElementById("outagesLista");
-        lista.innerHTML = "";
-        perdidosDetalhes.forEach(item => {
-          const card = document.createElement("div");
-          card.className = "outage-card";
-          card.innerHTML = `<div><strong>${item.outage}</strong></div><div><span>Tempo: ${item.tempo} min</span></div>`;
-          lista.appendChild(card);
-        });
-      };
-      reader.readAsArrayBuffer(file);
-    }
-  </script>
+    </script>
 </body>
 </html>
