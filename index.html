@@ -251,12 +251,12 @@
       const timeFilter = document.getElementById('timeFilter');
       const timeSet = new Set();
       allData.forEach(row => {
-        let horario = "Indefinido";
-        if (row["HORA"]) {
+        let horario = "00";
+        if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0');
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1];
+          if (match) horario = match[1].padStart(2, '0');
         }
         timeSet.add(horario);
       });
@@ -275,7 +275,7 @@
       });
       loginFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(loginSet).sort().forEach(login => {
-        const nome = nomesPorLogin[login] ? `${nomesPorLogin[login]} (${login})` : login;
+        const nome = nomesPorLogin[login] || login;
         loginFilter.innerHTML += `<option value="${login}">${nome}</option>`;
       });
       loginFilter.disabled = false;
@@ -302,12 +302,12 @@
         if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster) return false;
         
         // Filtro por horário
-        let horario = "Indefinido";
-        if (row["HORA"]) {
+        let horario = "00";
+        if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0');
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1];
+          if (match) horario = match[1].padStart(2, '0');
         }
         if (currentFilters.time !== 'all' && horario !== currentFilters.time) return false;
         
@@ -336,13 +336,13 @@
         const login = row["LOGIN"] || "Desconhecido";
         const cluster = row["CLUSTER"] || "Indefinido";
         const tecnologia = row["TECNOLOGIA"] || "Indefinido";
-        let horario = "Indefinido";
+        let horario = "00";
 
-        if (row["HORA"]) {
+        if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0');
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1];
+          if (match) horario = match[1].padStart(2, '0');
         }
 
         // Volume por login
@@ -370,9 +370,9 @@
           <div class="col-md-6">
             <div class="card">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Volume por Login</span>
+                <span>Volume por Técnico</span>
                 <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porLogin')">
-                  <i class="bi bi-download"></i> Exportar
+                  Exportar
                 </button>
               </div>
               <div class="card-body">
@@ -388,7 +388,7 @@
               <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Volume por Cluster</span>
                 <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porCluster')">
-                  <i class="bi bi-download"></i> Exportar
+                  Exportar
                 </button>
               </div>
               <div class="card-body">
@@ -406,7 +406,7 @@
               <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Volume por Horário</span>
                 <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porHorario')">
-                  <i class="bi bi-download"></i> Exportar
+                  Exportar
                 </button>
               </div>
               <div class="card-body">
@@ -422,7 +422,7 @@
               <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Volume por Tecnologia</span>
                 <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porTecnologia')">
-                  <i class="bi bi-download"></i> Exportar
+                  Exportar
                 </button>
               </div>
               <div class="card-body">
@@ -463,7 +463,8 @@
       Object.entries(data)
         .sort((a, b) => b[1] - a[1])
         .forEach(([key, value]) => {
-          const nome = traduzirLogin && nomesPorLogin[key] ? `${nomesPorLogin[key]} (${key})` : key;
+          // Prioriza nomes completos para logins conhecidos
+          const nome = traduzirLogin ? (nomesPorLogin[key] || key) : key;
           const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
           rows += `<tr>
             <td>${nome}</td>
@@ -482,7 +483,7 @@
         Object.entries(porLogin)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 10)
-          .map(([key, value]) => nomesPorLogin[key] ? nomesPorLogin[key] : key),
+          .map(([key, value]) => nomesPorLogin[key] || key),
         Object.entries(porLogin)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 10)
@@ -574,7 +575,6 @@
         return colors.slice(0, count);
       }
       
-      // Para outros tipos, repetir cores se necessário
       let result = [];
       for (let i = 0; i < count; i++) {
         result.push(colors[i % colors.length]);
@@ -583,7 +583,6 @@
     }
 
     function exportToExcel(type) {
-      // Implementar lógica de exportação para Excel
       alert(`Exportar dados ${type} para Excel - Funcionalidade em desenvolvimento`);
     }
 
