@@ -72,10 +72,17 @@
       const porTecnologia = {};
 
       data.forEach((row) => {
-        const login = row["Login"] || "Desconhecido";
-        const cluster = row["Cluster"] || "Indefinido";
-        const horario = (row["Data/Hora"] || '').toString().slice(11, 13);
-        const tecnologia = row["Tecnologia"] || "Indefinido";
+        const login = row["LOGIN"] || "Desconhecido";
+        const cluster = row["CLUSTER"] || "Indefinido";
+        const tecnologia = row["TECNOLOGIA"] || "Indefinido";
+        let horario = "Indefinido";
+
+        if (row["HORA"]) {
+          horario = row["HORA"].toString().padStart(2, '0');
+        } else if (row["INICIO"]) {
+          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+          if (match) horario = match[1];
+        }
 
         // Volume por login
         if (!porLogin[login]) porLogin[login] = 0;
