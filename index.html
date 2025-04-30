@@ -38,13 +38,13 @@
     }
     .card-header {
       font-weight: 600;
-      background-color: #00A1E0; /* Azul Claro */
+      background-color: #00A1E0;
       color: white;
       border-radius: 10px 10px 0 0 !important;
       cursor: pointer;
     }
     .card-header.secondary {
-      background-color: #FF6D00; /* Laranja Claro */
+      background-color: #FF6D00;
     }
     table {
       border-collapse: collapse;
@@ -83,7 +83,7 @@
     .total-outages {
       font-size: 1.5rem;
       font-weight: bold;
-      color: #00A1E0; /* Azul Claro */
+      color: #00A1E0;
     }
     .export-btn {
       margin-left: 10px;
@@ -116,6 +116,9 @@
       display: inline-block;
     }
     .bi-chevron-up {
+      display: none;
+    }
+    .d-none {
       display: none;
     }
   </style>
@@ -232,28 +235,44 @@
 
     function handleFiles(e) {
       const files = e.target.files;
-      allData = [];
-
+      allData = []; // Resetar dados anteriores
+      const readers = [];
+      
       if (files.length === 0) return;
 
-      Array.from(files).forEach((file, index) => {
+      // Primeiro ler todos os arquivos
+      Array.from(files).forEach((file) => {
         const reader = new FileReader();
-        reader.onload = (evt) => {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+        readers.push(new Promise((resolve) => {
+          reader.onload = (evt) => {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const sheetData = [];
+            workbook.SheetNames.forEach((sheetName) => {
+              const worksheet = workbook.Sheets[sheetName];
+              const jsonData = XLSX.utils.sheet_to_json(worksheet);
+              sheetData.push(...jsonData);
+            });
+            
+            resolve(sheetData);
+          };
+          reader.readAsArrayBuffer(file);
+        }));
+      });
 
-          workbook.SheetNames.forEach((sheetName) => {
-            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-            allData = allData.concat(sheetData);
-          });
-
-          if (index === files.length - 1) {
-            console.log("Dados brutos carregados:", allData);
-            initializeFilters();
-            processData(allData);
-          }
-        };
-        reader.readAsArrayBuffer(file);
+      // Quando todos os arquivos forem lidos
+      Promise.all(readers).then((results) => {
+        // Concatenar todos os dados de todos os arquivos
+        allData = results.flat();
+        console.log("Total de registros carregados:", allData.length);
+        console.log("Amostra dos dados:", allData.slice(0, 3));
+        
+        initializeFilters();
+        processData(allData);
+      }).catch((error) => {
+        console.error("Erro ao ler arquivos:", error);
+        alert("Erro ao processar arquivos. Verifique o console para detalhes.");
       });
     }
 
@@ -262,7 +281,7 @@
       const techFilter = document.getElementById('technologyFilter');
       const techSet = new Set();
       allData.forEach(row => {
-        const tech = row["TECNOLOGIA"] || "Indefinido";
+        const tech = row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido";
         techSet.add(tech.toString().trim());
       });
       techFilter.innerHTML = '<option value="all">Todas</option>';
@@ -275,7 +294,7 @@
       const clusterFilter = document.getElementById('clusterFilter');
       const clusterSet = new Set();
       allData.forEach(row => {
-        const cluster = row["CLUSTER"] || "Indefinido";
+        const cluster = row["CLUSTER"] || row["Cluster"] || "Indefinido";
         clusterSet.add(cluster.toString().trim());
       });
       clusterFilter.innerHTML = '<option value="all">Todos</option>';
@@ -291,8 +310,9 @@
         let horario = "00";
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"]) {
-          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+        } else if (row["INICIO"] || row["Data/Hora"]) {
+          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
+          const match = dateStr.match(/\b(\d{2}):/);
           if (match) horario = match[1].padStart(2, '0').trim();
         }
         timeSet.add(horario);
@@ -307,7 +327,7 @@
       const loginFilter = document.getElementById('loginFilter');
       const loginSet = new Set();
       allData.forEach(row => {
-        const login = row["LOGIN"] || "Desconhecido";
+        const login = row["LOGIN"] || row["Login"] || "Desconhecido";
         loginSet.add(login.toString().trim());
       });
       loginFilter.innerHTML = '<option value="all">Todos</option>';
@@ -330,26 +350,29 @@
 
     function filterData(data) {
       return data.filter(row => {
+        if (!row) return false;
+        
         // Filtro por tecnologia
-        const tech = (row["TECNOLOGIA"] || "Indefinido").toString().trim();
+        const tech = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim();
         if (currentFilters.technology !== 'all' && tech !== currentFilters.technology) return false;
         
         // Filtro por cluster
-        const cluster = (row["CLUSTER"] || "Indefinido").toString().trim();
+        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim();
         if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster) return false;
         
         // Filtro por horário
         let horario = "00";
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"]) {
-          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+        } else if (row["INICIO"] || row["Data/Hora"]) {
+          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
+          const match = dateStr.match(/\b(\d{2}):/);
           if (match) horario = match[1].padStart(2, '0').trim();
         }
         if (currentFilters.time !== 'all' && horario !== currentFilters.time) return false;
         
         // Filtro por login
-        const login = (row["LOGIN"] || "Desconhecido").toString().trim();
+        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim();
         if (currentFilters.login !== 'all' && login !== currentFilters.login) return false;
         
         return true;
@@ -360,7 +383,6 @@
       const filteredData = filterData(data);
       const totalOutages = filteredData.length;
       
-      // Mostrar seção de resumo
       document.getElementById('summary').style.display = 'block';
       document.getElementById('totalOutages').textContent = totalOutages;
       document.getElementById('totalDebug').textContent = `Registros totais: ${data.length} | Filtrados: ${totalOutages}`;
@@ -370,21 +392,29 @@
       const porHorario = {};
       const porTecnologia = {};
 
-      filteredData.forEach((row) => {
-        // Verificação robusta de campos
-        const login = (row["LOGIN"] || "Desconhecido").toString().trim();
-        const cluster = (row["CLUSTER"] || "Indefinido").toString().trim();
-        const tecnologia = (row["TECNOLOGIA"] || "Indefinido").toString().trim();
-        let horario = "00";
+      // Verificação de estrutura dos dados
+      console.log("Estrutura do primeiro registro:", filteredData[0] ? Object.keys(filteredData[0]) : "Nenhum dado");
 
+      filteredData.forEach((row, index) => {
+        if (!row) {
+          console.warn(`Registro ${index} está vazio ou mal formatado`);
+          return;
+        }
+
+        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim();
+        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim();
+        const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim();
+        
+        let horario = "00";
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"]) {
-          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+        } else if (row["INICIO"] || row["Data/Hora"]) {
+          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
+          const match = dateStr.match(/\b(\d{2}):/);
           if (match) horario = match[1].padStart(2, '0').trim();
         }
 
-        // Contagem correta - cada linha representa 1 outage
+        // Contagem correta - cada linha é 1 outage
         porLogin[login] = (porLogin[login] || 0) + 1;
         porCluster[cluster] = (porCluster[cluster] || 0) + 1;
         porHorario[horario] = (porHorario[horario] || 0) + 1;
@@ -392,11 +422,15 @@
       });
 
       // Verificação de consistência
-      const totalPorLogin = Object.values(porLogin).reduce((a, b) => a + b, 0);
-      console.log("Total por login:", totalPorLogin, "Total outages:", totalOutages);
+      const totalContabilizado = Object.values(porLogin).reduce((a, b) => a + b, 0);
+      console.log("Total contabilizado:", totalContabilizado, "Total filtrado:", totalOutages);
       
-      if (totalPorLogin !== totalOutages) {
-        console.warn("Discrepância encontrada: soma por login diferente do total");
+      if (totalContabilizado !== totalOutages) {
+        console.error("Discrepância na contagem!", {
+          totalContabilizado,
+          totalOutages,
+          diff: Math.abs(totalContabilizado - totalOutages)
+        });
       }
 
       // Atualizar resumo
@@ -501,13 +535,6 @@
       
       // Criar gráficos
       createCharts(porLogin, porCluster, porHorario, porTecnologia);
-    }
-
-    function toggleSection(sectionId) {
-      const section = document.getElementById(sectionId);
-      section.classList.toggle('d-none');
-      const header = section.parentElement.querySelector('.card-header');
-      header.classList.toggle('collapsed');
     }
 
     function updateSummary(porTecnologia, porCluster, porHorario) {
