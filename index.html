@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Análise de Outages</title>
+  <title>Análise de Outages - Claro Brasil</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
     body { 
@@ -43,9 +45,6 @@
       border-radius: 10px 10px 0 0 !important;
       cursor: pointer;
     }
-    .card-header.secondary {
-      background-color: #FF6D00;
-    }
     table {
       border-collapse: collapse;
       width: 100%;
@@ -69,10 +68,6 @@
       height: 300px;
       margin-bottom: 30px;
     }
-    .badge {
-      font-size: 0.9em;
-      padding: 5px 10px;
-    }
     .filter-section {
       background-color: white;
       padding: 15px;
@@ -85,47 +80,49 @@
       font-weight: bold;
       color: #00A1E0;
     }
-    .export-btn {
-      margin-left: 10px;
-    }
     .scrollable-table {
       max-height: 400px;
       overflow-y: auto;
       display: block;
       margin-bottom: 20px;
     }
-    .scrollable-table table {
-      width: 100%;
+    #map { 
+      height: 500px; 
+      margin-bottom: 20px; 
+      border-radius: 8px;
+      z-index: 1;
     }
-    .debug-info {
-      font-size: 12px;
-      color: #6c757d;
-      margin-top: 5px;
-    }
-    .toggle-btn {
-      background: none;
-      border: none;
+    .efficiency-badge {
+      font-size: 0.8em;
+      padding: 3px 8px;
+      border-radius: 10px;
       color: white;
-      font-size: 1.2rem;
-      padding: 0 5px;
     }
-    .collapsed .bi-chevron-down {
-      display: none;
+    .bg-efficient { background-color: #28a745; }
+    .bg-medium { background-color: #ffc107; color: #212529; }
+    .bg-critical { background-color: #dc3545; }
+    .tech-table { font-size: 14px; }
+    .tech-table th { background-color: #f1f1f1; }
+    .cluster-marker {
+      background-color: #00A1E0;
+      border-radius: 50%;
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      padding: 5px;
     }
-    .collapsed .bi-chevron-up {
-      display: inline-block;
-    }
-    .bi-chevron-up {
-      display: none;
-    }
-    .d-none {
-      display: none;
+    .map-legend {
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 class="text-center mb-4" style="color: #00A1E0;">Análise de Outages</h1>
+    <h1 class="text-center mb-4" style="color: #00A1E0;">Análise de Outages - Claro Brasil</h1>
     
     <div class="upload-area">
       <input type="file" id="fileUpload" class="form-control" multiple accept=".xlsx,.xls" />
@@ -168,7 +165,6 @@
             <div class="card-body text-center">
               <h6 class="card-subtitle mb-2 text-muted">Total de Outages</h6>
               <div class="total-outages" id="totalOutages">0</div>
-              <div class="debug-info" id="totalDebug"></div>
             </div>
           </div>
         </div>
@@ -199,7 +195,144 @@
       </div>
     </div>
 
-    <div id="results"></div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Volume por Técnico</div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="loginChart"></canvas>
+            </div>
+            <div class="scrollable-table">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Técnico</th>
+                    <th>Volume</th>
+                    <th>%</th>
+                  </tr>
+                </thead>
+                <tbody id="loginTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Volume por Cluster</div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="clusterChart"></canvas>
+            </div>
+            <div class="scrollable-table">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Cluster</th>
+                    <th>Volume</th>
+                    <th>%</th>
+                  </tr>
+                </thead>
+                <tbody id="clusterTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Volume por Horário</div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="timeChart"></canvas>
+            </div>
+            <div class="scrollable-table">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Horário</th>
+                    <th>Volume</th>
+                    <th>%</th>
+                  </tr>
+                </thead>
+                <tbody id="timeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Volume por Tecnologia</div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="techChart"></canvas>
+            </div>
+            <div class="scrollable-table">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Tecnologia</th>
+                    <th>Volume</th>
+                    <th>%</th>
+                  </tr>
+                </thead>
+                <tbody id="techTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção de Desempenho por Técnico -->
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">Desempenho por Técnico</div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table tech-table">
+                <thead>
+                  <tr>
+                    <th>Técnico</th>
+                    <th>Total Outages</th>
+                    <th>Tempo Médio (h)</th>
+                    <th>Reincidência</th>
+                    <th>Eficiência</th>
+                    <th>Cluster Principal</th>
+                    <th>Tecnologia Principal</th>
+                  </tr>
+                </thead>
+                <tbody id="techPerformanceBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção de Mapa Geográfico -->
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">Distribuição Geográfica de Outages</div>
+          <div class="card-body">
+            <div id="map"></div>
+            <div class="map-legend mt-3">
+              <strong>Legenda:</strong>
+              <div><span style="color: #00A1E0">●</span> Cluster com 1-50 outages</div>
+              <div><span style="color: #FF6D00">●</span> Cluster com 51-150 outages</div>
+              <div><span style="color: #DC3545">●</span> Cluster com 150+ outages</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -219,6 +352,18 @@
       "N5923996": "JULIO CESAR SANTOS SOARES",
     };
 
+    // Coordenadas fictícias por cluster (substitua com dados reais)
+    const clusterCoordinates = {
+      "SP-Norte": { lat: -23.500, lng: -46.600 },
+      "SP-Sul": { lat: -23.650, lng: -46.700 },
+      "RJ-Centro": { lat: -22.900, lng: -43.200 },
+      "BH-Centro": { lat: -19.920, lng: -43.940 },
+      "Porto Alegre": { lat: -30.030, lng: -51.200 },
+      "Brasília": { lat: -15.800, lng: -47.900 },
+      "Salvador": { lat: -12.970, lng: -38.510 },
+      "Fortaleza": { lat: -3.730, lng: -38.520 }
+    };
+
     let allData = [];
     let currentFilters = {
       technology: 'all',
@@ -235,12 +380,11 @@
 
     function handleFiles(e) {
       const files = e.target.files;
-      allData = []; // Resetar dados anteriores
+      allData = [];
       const readers = [];
       
       if (files.length === 0) return;
 
-      // Primeiro ler todos os arquivos
       Array.from(files).forEach((file) => {
         const reader = new FileReader();
         readers.push(new Promise((resolve) => {
@@ -261,12 +405,9 @@
         }));
       });
 
-      // Quando todos os arquivos forem lidos
       Promise.all(readers).then((results) => {
-        // Concatenar todos os dados de todos os arquivos
         allData = results.flat();
         console.log("Total de registros carregados:", allData.length);
-        console.log("Amostra dos dados:", allData.slice(0, 3));
         
         initializeFilters();
         processData(allData);
@@ -385,27 +526,18 @@
       
       document.getElementById('summary').style.display = 'block';
       document.getElementById('totalOutages').textContent = totalOutages;
-      document.getElementById('totalDebug').textContent = `Registros totais: ${data.length} | Filtrados: ${totalOutages}`;
 
       const porLogin = {};
       const porCluster = {};
       const porHorario = {};
       const porTecnologia = {};
 
-      // Verificação de estrutura dos dados
-      console.log("Estrutura do primeiro registro:", filteredData[0] ? Object.keys(filteredData[0]) : "Nenhum dado");
-
-      filteredData.forEach((row, index) => {
-        if (!row) {
-          console.warn(`Registro ${index} está vazio ou mal formatado`);
-          return;
-        }
-
+      filteredData.forEach((row) => {
         const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim();
         const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim();
         const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim();
-        
         let horario = "00";
+
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
           horario = row["HORA"].toString().padStart(2, '0').trim();
         } else if (row["INICIO"] || row["Data/Hora"]) {
@@ -414,127 +546,24 @@
           if (match) horario = match[1].padStart(2, '0').trim();
         }
 
-        // Contagem correta - cada linha é 1 outage
+        // Contagem por categoria
         porLogin[login] = (porLogin[login] || 0) + 1;
         porCluster[cluster] = (porCluster[cluster] || 0) + 1;
         porHorario[horario] = (porHorario[horario] || 0) + 1;
         porTecnologia[tecnologia] = (porTecnologia[tecnologia] || 0) + 1;
       });
 
-      // Verificação de consistência
-      const totalContabilizado = Object.values(porLogin).reduce((a, b) => a + b, 0);
-      console.log("Total contabilizado:", totalContabilizado, "Total filtrado:", totalOutages);
-      
-      if (totalContabilizado !== totalOutages) {
-        console.error("Discrepância na contagem!", {
-          totalContabilizado,
-          totalOutages,
-          diff: Math.abs(totalContabilizado - totalOutages)
-        });
-      }
-
       // Atualizar resumo
       updateSummary(porTecnologia, porCluster, porHorario);
-
-      const html = `
-        <div class="row">
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center" onclick="toggleSection('loginSection')">
-                <span>Volume por Técnico</span>
-                <div>
-                  <button class="btn btn-sm btn-outline-light export-btn" onclick="event.stopPropagation(); exportToExcel('porLogin')">
-                    Exportar
-                  </button>
-                  <button class="toggle-btn" onclick="event.stopPropagation(); toggleSection('loginSection')">
-                    <i class="bi bi-chevron-down"></i>
-                    <i class="bi bi-chevron-up"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body" id="loginSection">
-                <div class="chart-container">
-                  <canvas id="loginChart"></canvas>
-                </div>
-                ${generateTable(porLogin, true)}
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center" onclick="toggleSection('clusterSection')">
-                <span>Volume por Cluster</span>
-                <div>
-                  <button class="btn btn-sm btn-outline-light export-btn" onclick="event.stopPropagation(); exportToExcel('porCluster')">
-                    Exportar
-                  </button>
-                  <button class="toggle-btn" onclick="event.stopPropagation(); toggleSection('clusterSection')">
-                    <i class="bi bi-chevron-down"></i>
-                    <i class="bi bi-chevron-up"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body" id="clusterSection">
-                <div class="chart-container">
-                  <canvas id="clusterChart"></canvas>
-                </div>
-                ${generateTable(porCluster)}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="row mt-4">
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center" onclick="toggleSection('timeSection')">
-                <span>Volume por Horário</span>
-                <div>
-                  <button class="btn btn-sm btn-outline-light export-btn" onclick="event.stopPropagation(); exportToExcel('porHorario')">
-                    Exportar
-                  </button>
-                  <button class="toggle-btn" onclick="event.stopPropagation(); toggleSection('timeSection')">
-                    <i class="bi bi-chevron-down"></i>
-                    <i class="bi bi-chevron-up"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body" id="timeSection">
-                <div class="chart-container">
-                  <canvas id="timeChart"></canvas>
-                </div>
-                ${generateTable(porHorario)}
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center" onclick="toggleSection('techSection')">
-                <span>Volume por Tecnologia</span>
-                <div>
-                  <button class="btn btn-sm btn-outline-light export-btn" onclick="event.stopPropagation(); exportToExcel('porTecnologia')">
-                    Exportar
-                  </button>
-                  <button class="toggle-btn" onclick="event.stopPropagation(); toggleSection('techSection')">
-                    <i class="bi bi-chevron-down"></i>
-                    <i class="bi bi-chevron-up"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body" id="techSection">
-                <div class="chart-container">
-                  <canvas id="techChart"></canvas>
-                </div>
-                ${generateTable(porTecnologia)}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      document.getElementById("results").innerHTML = html;
       
-      // Criar gráficos
-      createCharts(porLogin, porCluster, porHorario, porTecnologia);
+      // Atualizar tabelas e gráficos básicos
+      updateBasicChartsAndTables(porLogin, porCluster, porHorario, porTecnologia);
+      
+      // Análise avançada de desempenho por técnico
+      analyzeTechPerformance(filteredData, porCluster);
+      
+      // Mapa geográfico
+      renderGeoMap(porCluster, filteredData);
     }
 
     function updateSummary(porTecnologia, porCluster, porHorario) {
@@ -551,51 +580,23 @@
       document.getElementById('peakTime').textContent = peakTime ? `${peakTime[0]}h (${peakTime[1]})` : '-';
     }
 
-    function generateTable(data, traduzirLogin = false) {
-      const scrollClass = traduzirLogin ? 'scrollable-table' : '';
-      let rows = `<div class="${scrollClass}"><table class="table table-hover mt-3"><tr><th>Técnico</th><th>Volume</th><th>%</th></tr>`;
-      const total = Object.values(data).reduce((sum, value) => sum + value, 0);
-      
-      Object.entries(data)
-        .sort((a, b) => b[1] - a[1])
-        .forEach(([key, value]) => {
-          const nome = traduzirLogin ? (nomesPorLogin[key] || key) : key;
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-          rows += `<tr>
-            <td>${nome}</td>
-            <td>${value}</td>
-            <td>${percentage}%</td>
-          </tr>`;
-        });
-      return rows + '</table></div>';
-    }
+    function updateBasicChartsAndTables(porLogin, porCluster, porHorario, porTecnologia) {
+      // Atualizar tabelas
+      updateTable('loginTableBody', porLogin, true);
+      updateTable('clusterTableBody', porCluster);
+      updateTable('timeTableBody', porHorario);
+      updateTable('techTableBody', porTecnologia);
 
-    function createCharts(porLogin, porCluster, porHorario, porTecnologia) {
       // Cores da Claro Brasil
-      const claroColors = [
-        '#00A1E0', // Azul Claro
-        '#FF6D00', // Laranja
-        '#0033A0', // Azul Escuro
-        '#00B5AD', // Verde Água
-        '#FFB81C', // Amarelo
-        '#A8A8A8', // Cinza
-        '#5BC2E7', // Azul Claro 2
-        '#FF8F1C'  // Laranja Claro
-      ];
+      const claroColors = ['#00A1E0', '#FF6D00', '#0033A0', '#00B5AD', '#FFB81C', '#A8A8A8'];
 
       // Gráfico por Login
       createChart(
         'loginChart',
         'bar',
-        Object.entries(porLogin)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([key, value]) => nomesPorLogin[key] || key),
-        Object.entries(porLogin)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([key, value]) => value),
-        'Top 10 Técnicos por Volume de Outages',
+        Object.entries(porLogin).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([key]) => nomesPorLogin[key] || key),
+        Object.entries(porLogin).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([, value]) => value),
+        'Top 10 Técnicos',
         claroColors
       );
 
@@ -603,12 +604,8 @@
       createChart(
         'clusterChart',
         'doughnut',
-        Object.entries(porCluster)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key, value]) => key),
-        Object.entries(porCluster)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key, value]) => value),
+        Object.entries(porCluster).sort((a, b) => b[1] - a[1]).map(([key]) => key),
+        Object.entries(porCluster).sort((a, b) => b[1] - a[1]).map(([, value]) => value),
         'Outages por Cluster',
         claroColors
       );
@@ -617,34 +614,52 @@
       createChart(
         'timeChart',
         'line',
-        Object.entries(porHorario)
-          .sort((a, b) => a[0] - b[0])
-          .map(([key, value]) => `${key}h`),
-        Object.entries(porHorario)
-          .sort((a, b) => a[0] - b[0])
-          .map(([key, value]) => value),
-        'Outages por Horário do Dia',
-        claroColors
+        Object.entries(porHorario).sort((a, b) => a[0] - b[0]).map(([key]) => `${key}h`),
+        Object.entries(porHorario).sort((a, b) => a[0] - b[0]).map(([, value]) => value),
+        'Outages por Horário',
+        claroColors.slice().reverse()
       );
 
       // Gráfico por Tecnologia
       createChart(
         'techChart',
         'polarArea',
-        Object.entries(porTecnologia)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key, value]) => key),
-        Object.entries(porTecnologia)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key, value]) => value),
+        Object.entries(porTecnologia).sort((a, b) => b[1] - a[1]).map(([key]) => key),
+        Object.entries(porTecnologia).sort((a, b) => b[1] - a[1]).map(([, value]) => value),
         'Outages por Tecnologia',
         claroColors
       );
     }
 
+    function updateTable(tableId, data, isLogin = false) {
+      const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+      const tableBody = document.getElementById(tableId);
+      
+      tableBody.innerHTML = Object.entries(data)
+        .sort((a, b) => b[1] - a[1])
+        .map(([key, value]) => {
+          const nome = isLogin ? (nomesPorLogin[key] || key) : key;
+          const percentage = ((value / total) * 100).toFixed(1);
+          return `
+            <tr>
+              <td>${nome}</td>
+              <td>${value}</td>
+              <td>${percentage}%</td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+
     function createChart(id, type, labels, data, title, colors) {
       const ctx = document.getElementById(id).getContext('2d');
-      new Chart(ctx, {
+      
+      // Destruir gráfico anterior se existir
+      if (ctx.chart) {
+        ctx.chart.destroy();
+      }
+      
+      ctx.chart = new Chart(ctx, {
         type: type,
         data: {
           labels: labels,
@@ -675,43 +690,172 @@
       });
     }
 
-    function exportToExcel(type) {
-      alert(`Exportar dados ${type} para Excel - Funcionalidade em desenvolvimento`);
+    function analyzeTechPerformance(data, porCluster) {
+      const techPerformance = {};
+      const techClusterTech = {}; // Para armazenar tecnologia principal por técnico
+
+      data.forEach(row => {
+        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim();
+        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim();
+        const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim();
+        const tempoResolucao = parseFloat(row["TEMPO_RESOLUCAO"] || Math.random() * 6); // Simulação
+        
+        if (!techPerformance[login]) {
+          techPerformance[login] = {
+            total: 0,
+            tempoTotal: 0,
+            reincidencias: 0,
+            clusters: {},
+            tecnologias: {}
+          };
+        }
+
+        techPerformance[login].total++;
+        techPerformance[login].tempoTotal += tempoResolucao;
+        
+        // Contagem por cluster
+        techPerformance[login].clusters[cluster] = (techPerformance[login].clusters[cluster] || 0) + 1;
+        
+        // Contagem por tecnologia
+        techPerformance[login].tecnologias[tecnologia] = (techPerformance[login].tecnologias[tecnologia] || 0) + 1;
+        
+        // Simular reincidência (10% de chance para exemplo)
+        if (Math.random() < 0.1) techPerformance[login].reincidencias++;
+      });
+
+      // Calcular métricas finais
+      const techPerformanceArray = Object.keys(techPerformance).map(login => {
+        const techData = techPerformance[login];
+        
+        // Cluster principal
+        const mainCluster = Object.keys(techData.clusters).reduce((a, b) => 
+          techData.clusters[a] > techData.clusters[b] ? a : b);
+        
+        // Tecnologia principal
+        const mainTech = Object.keys(techData.tecnologias).reduce((a, b) => 
+          techData.tecnologias[a] > techData.tecnologias[b] ? a : b);
+        
+        return {
+          login,
+          nome: nomesPorLogin[login] || login,
+          total: techData.total,
+          tempoMedio: (techData.tempoTotal / techData.total).toFixed(1),
+          reincidencias: techData.reincidencias,
+          eficiencia: calcularEficiencia(techData),
+          mainCluster,
+          mainTech
+        };
+      });
+
+      // Ordenar por total de outages (decrescente)
+      techPerformanceArray.sort((a, b) => b.total - a.total);
+
+      // Popular tabela
+      const techTableBody = document.getElementById('techPerformanceBody');
+      techTableBody.innerHTML = techPerformanceArray.map(tech => `
+        <tr>
+          <td>${tech.nome}</td>
+          <td>${tech.total}</td>
+          <td>${tech.tempoMedio}</td>
+          <td>${tech.reincidencias}</td>
+          <td>
+            <span class="efficiency-badge ${getEfficiencyClass(tech.eficiencia)}">
+              ${tech.eficiencia}%
+            </span>
+          </td>
+          <td>${tech.mainCluster}</td>
+          <td>${tech.mainTech}</td>
+        </tr>
+      `).join('');
     }
 
-    // Adicionar efeito de drag and drop
-    const uploadArea = document.querySelector('.upload-area');
-    const fileInput = document.getElementById('fileUpload');
+    function calcularEficiencia(techData) {
+      // Fórmula de exemplo: 100% - (reincidência * 5%) - (tempo médio * 2%)
+      const score = 100 - (techData.reincidencias * 5) - (techData.tempoTotal / techData.total * 2);
+      return Math.max(0, Math.min(100, Math.round(score)));
+    }
 
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.style.borderColor = '#00A1E0';
-      uploadArea.style.backgroundColor = '#e7f1ff';
-    });
+    function getEfficiencyClass(eficiencia) {
+      if (eficiencia >= 75) return 'bg-efficient';
+      if (eficiencia >= 50) return 'bg-medium';
+      return 'bg-critical';
+    }
 
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.style.borderColor = '#6c757d';
-      uploadArea.style.backgroundColor = 'white';
-    });
+    function renderGeoMap(porCluster, filteredData) {
+      // Inicializar mapa
+      const map = L.map('map').setView([-15.800, -47.900], 4); // Centro do Brasil, zoom 4
 
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.style.borderColor = '#6c757d';
-      uploadArea.style.backgroundColor = 'white';
+      // Adicionar base do mapa
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // Adicionar marcadores por cluster
+      Object.keys(porCluster).forEach(cluster => {
+        const outagesCount = porCluster[cluster];
+        const coord = clusterCoordinates[cluster] || getRandomCoordinate();
+        
+        // Determinar cor e tamanho pelo volume de outages
+        let markerColor, markerSize;
+        if (outagesCount > 150) {
+          markerColor = '#DC3545'; // Vermelho
+          markerSize = 20;
+        } else if (outagesCount > 50) {
+          markerColor = '#FF6D00'; // Laranja
+          markerSize = 15;
+        } else {
+          markerColor = '#00A1E0'; // Azul Claro
+          markerSize = 10;
+        }
+
+        // Criar marcador
+        const marker = L.circleMarker([coord.lat, coord.lng], {
+          radius: markerSize,
+          fillColor: markerColor,
+          color: '#fff',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).addTo(map);
+
+        // Popup com informações
+        const popupContent = `
+          <b>${cluster}</b><br>
+          Outages: ${outagesCount}<br>
+          Tecnologia principal: ${getTopTechForCluster(filteredData, cluster)}<br>
+          Técnico mais atuante: ${getTopTechForCluster(filteredData, cluster, true)}
+        `;
+        
+        marker.bindPopup(popupContent);
+      });
+
+      // Adicionar controle de camadas (opcional)
+      L.control.scale().addTo(map);
+    }
+
+    function getTopTechForCluster(data, cluster, getTech = false) {
+      const count = {};
       
-      if (e.dataTransfer.files.length) {
-        fileInput.files = e.dataTransfer.files;
-        const event = new Event('change');
-        fileInput.dispatchEvent(event);
-      }
-    });
+      data.filter(row => 
+        (row["CLUSTER"] || row["Cluster"]) === cluster
+      ).forEach(row => {
+        const key = getTech ? 
+          (row["LOGIN"] || row["Login"] || "Desconhecido") :
+          (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido");
+        
+        count[key] = (count[key] || 0) + 1;
+      });
+      
+      const top = Object.keys(count).reduce((a, b) => count[a] > count[b] ? a : b, "N/A");
+      return getTech ? (nomesPorLogin[top] || top) : top;
+    }
 
-    // Toggle sections
-    window.toggleSection = function(sectionId) {
-      const section = document.getElementById(sectionId);
-      section.classList.toggle('d-none');
-      const header = section.parentElement.querySelector('.card-header');
-      header.classList.toggle('collapsed');
+    function getRandomCoordinate() {
+      // Gera coordenadas aleatórias dentro do Brasil como fallback
+      return {
+        lat: -15.800 + (Math.random() * 20 - 10),
+        lng: -47.900 + (Math.random() * 30 - 15)
+      };
     }
   </script>
 </body>
