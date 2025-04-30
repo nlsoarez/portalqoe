@@ -5,23 +5,163 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Análise de Outages</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h2 { margin-top: 30px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background-color: #f2f2f2; }
-    .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .upload-area {
+      border: 2px dashed #6c757d;
+      padding: 30px;
+      text-align: center;
+      border-radius: 10px;
+      background-color: white;
+      margin-bottom: 30px;
+      transition: all 0.3s;
+    }
+    .upload-area:hover {
+      border-color: #0d6efd;
+      background-color: #f8f9ff;
+    }
+    .card {
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .card-header {
+      font-weight: 600;
+      background-color: #0d6efd;
+      color: white;
+      border-radius: 10px 10px 0 0 !important;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f1f1;
+      font-weight: 600;
+    }
+    tr:hover {
+      background-color: #f8f9fa;
+    }
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin-bottom: 30px;
+    }
+    .badge {
+      font-size: 0.9em;
+      padding: 5px 10px;
+    }
+    .filter-section {
+      background-color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .total-outages {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #0d6efd;
+    }
+    .export-btn {
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Análise de Outages</h1>
-  <div class="upload-area">
-    <input type="file" id="fileUpload" multiple accept=".xlsx,.xls" />
-    <p>Selecione uma ou mais planilhas Excel</p>
-  </div>
+  <div class="container">
+    <h1 class="text-center mb-4">Análise de Outages</h1>
+    
+    <div class="upload-area">
+      <input type="file" id="fileUpload" class="form-control" multiple accept=".xlsx,.xls" />
+      <p class="mt-2 text-muted">Arraste e solte ou clique para selecionar planilhas Excel</p>
+    </div>
 
-  <div id="results"></div>
+    <div class="filter-section">
+      <div class="row">
+        <div class="col-md-3">
+          <label for="technologyFilter" class="form-label">Filtrar por Tecnologia:</label>
+          <select id="technologyFilter" class="form-select" disabled>
+            <option value="all">Todas</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="clusterFilter" class="form-label">Filtrar por Cluster:</label>
+          <select id="clusterFilter" class="form-select" disabled>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="timeFilter" class="form-label">Filtrar por Horário:</label>
+          <select id="timeFilter" class="form-select" disabled>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="loginFilter" class="form-label">Filtrar por Técnico:</label>
+          <select id="loginFilter" class="form-select" disabled>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="summary" class="mb-4" style="display: none;">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-subtitle mb-2 text-muted">Total de Outages</h6>
+              <div class="total-outages" id="totalOutages">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-subtitle mb-2 text-muted">Tecnologia Principal</h6>
+              <div class="total-outages" id="mainTech">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-subtitle mb-2 text-muted">Cluster Principal</h6>
+              <div class="total-outages" id="mainCluster">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <h6 class="card-subtitle mb-2 text-muted">Horário Pico</h6>
+              <div class="total-outages" id="peakTime">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="results"></div>
+  </div>
 
   <script>
     const nomesPorLogin = {
@@ -40,11 +180,25 @@
       "N5923996": "JULIO CESAR SANTOS SOARES",
     };
 
+    let allData = [];
+    let currentFilters = {
+      technology: 'all',
+      cluster: 'all',
+      time: 'all',
+      login: 'all'
+    };
+
     document.getElementById('fileUpload').addEventListener('change', handleFiles, false);
+    document.getElementById('technologyFilter').addEventListener('change', applyFilters);
+    document.getElementById('clusterFilter').addEventListener('change', applyFilters);
+    document.getElementById('timeFilter').addEventListener('change', applyFilters);
+    document.getElementById('loginFilter').addEventListener('change', applyFilters);
 
     function handleFiles(e) {
       const files = e.target.files;
-      let allData = [];
+      allData = [];
+
+      if (files.length === 0) return;
 
       Array.from(files).forEach((file, index) => {
         const reader = new FileReader();
@@ -58,6 +212,7 @@
           });
 
           if (index === files.length - 1) {
+            initializeFilters();
             processData(allData);
           }
         };
@@ -65,13 +220,119 @@
       });
     }
 
+    function initializeFilters() {
+      // Tecnologias
+      const techFilter = document.getElementById('technologyFilter');
+      const techSet = new Set();
+      allData.forEach(row => {
+        const tech = row["TECNOLOGIA"] || "Indefinido";
+        techSet.add(tech);
+      });
+      techFilter.innerHTML = '<option value="all">Todas</option>';
+      Array.from(techSet).sort().forEach(tech => {
+        techFilter.innerHTML += `<option value="${tech}">${tech}</option>`;
+      });
+      techFilter.disabled = false;
+
+      // Clusters
+      const clusterFilter = document.getElementById('clusterFilter');
+      const clusterSet = new Set();
+      allData.forEach(row => {
+        const cluster = row["CLUSTER"] || "Indefinido";
+        clusterSet.add(cluster);
+      });
+      clusterFilter.innerHTML = '<option value="all">Todos</option>';
+      Array.from(clusterSet).sort().forEach(cluster => {
+        clusterFilter.innerHTML += `<option value="${cluster}">${cluster}</option>`;
+      });
+      clusterFilter.disabled = false;
+
+      // Horários
+      const timeFilter = document.getElementById('timeFilter');
+      const timeSet = new Set();
+      allData.forEach(row => {
+        let horario = "Indefinido";
+        if (row["HORA"]) {
+          horario = row["HORA"].toString().padStart(2, '0');
+        } else if (row["INICIO"]) {
+          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+          if (match) horario = match[1];
+        }
+        timeSet.add(horario);
+      });
+      timeFilter.innerHTML = '<option value="all">Todos</option>';
+      Array.from(timeSet).sort().forEach(time => {
+        timeFilter.innerHTML += `<option value="${time}">${time}h</option>`;
+      });
+      timeFilter.disabled = false;
+
+      // Logins
+      const loginFilter = document.getElementById('loginFilter');
+      const loginSet = new Set();
+      allData.forEach(row => {
+        const login = row["LOGIN"] || "Desconhecido";
+        loginSet.add(login);
+      });
+      loginFilter.innerHTML = '<option value="all">Todos</option>';
+      Array.from(loginSet).sort().forEach(login => {
+        const nome = nomesPorLogin[login] ? `${nomesPorLogin[login]} (${login})` : login;
+        loginFilter.innerHTML += `<option value="${login}">${nome}</option>`;
+      });
+      loginFilter.disabled = false;
+    }
+
+    function applyFilters() {
+      currentFilters = {
+        technology: document.getElementById('technologyFilter').value,
+        cluster: document.getElementById('clusterFilter').value,
+        time: document.getElementById('timeFilter').value,
+        login: document.getElementById('loginFilter').value
+      };
+      processData(allData);
+    }
+
+    function filterData(data) {
+      return data.filter(row => {
+        // Filtro por tecnologia
+        const tech = row["TECNOLOGIA"] || "Indefinido";
+        if (currentFilters.technology !== 'all' && tech !== currentFilters.technology) return false;
+        
+        // Filtro por cluster
+        const cluster = row["CLUSTER"] || "Indefinido";
+        if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster) return false;
+        
+        // Filtro por horário
+        let horario = "Indefinido";
+        if (row["HORA"]) {
+          horario = row["HORA"].toString().padStart(2, '0');
+        } else if (row["INICIO"]) {
+          const match = row["INICIO"].toString().match(/\b(\d{2}):/);
+          if (match) horario = match[1];
+        }
+        if (currentFilters.time !== 'all' && horario !== currentFilters.time) return false;
+        
+        // Filtro por login
+        const login = row["LOGIN"] || "Desconhecido";
+        if (currentFilters.login !== 'all' && login !== currentFilters.login) return false;
+        
+        return true;
+      });
+    }
+
     function processData(data) {
+      const filteredData = filterData(data);
+      const totalOutages = filteredData.length;
+      
+      // Mostrar seção de resumo
+      document.getElementById('summary').style.display = 'block';
+      document.getElementById('totalOutages').textContent = totalOutages;
+
       const porLogin = {};
       const porCluster = {};
       const porHorario = {};
       const porTecnologia = {};
 
-      data.forEach((row) => {
+      filteredData.forEach((row) => {
         const login = row["LOGIN"] || "Desconhecido";
         const cluster = row["CLUSTER"] || "Indefinido";
         const tecnologia = row["TECNOLOGIA"] || "Indefinido";
@@ -101,31 +362,257 @@
         porTecnologia[tecnologia]++;
       });
 
-      const totalOutages = data.length;
+      // Atualizar resumo
+      updateSummary(porTecnologia, porCluster, porHorario);
 
       const html = `
-        <h2>Total de Outages: ${totalOutages}</h2>
-        <h2>Volume por Login</h2>
-        ${generateTable(porLogin, true)}
-        <h2>Volume por Cluster</h2>
-        ${generateTable(porCluster)}
-        <h2>Volume por Horário</h2>
-        ${generateTable(porHorario)}
-        <h2>Volume por Tecnologia</h2>
-        ${generateTable(porTecnologia)}
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Volume por Login</span>
+                <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porLogin')">
+                  <i class="bi bi-download"></i> Exportar
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="loginChart"></canvas>
+                </div>
+                ${generateTable(porLogin, true)}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Volume por Cluster</span>
+                <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porCluster')">
+                  <i class="bi bi-download"></i> Exportar
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="clusterChart"></canvas>
+                </div>
+                ${generateTable(porCluster)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Volume por Horário</span>
+                <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porHorario')">
+                  <i class="bi bi-download"></i> Exportar
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="timeChart"></canvas>
+                </div>
+                ${generateTable(porHorario)}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Volume por Tecnologia</span>
+                <button class="btn btn-sm btn-outline-light export-btn" onclick="exportToExcel('porTecnologia')">
+                  <i class="bi bi-download"></i> Exportar
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="techChart"></canvas>
+                </div>
+                ${generateTable(porTecnologia)}
+              </div>
+            </div>
+          </div>
+        </div>
       `;
 
       document.getElementById("results").innerHTML = html;
+      
+      // Criar gráficos
+      createCharts(porLogin, porCluster, porHorario, porTecnologia);
+    }
+
+    function updateSummary(porTecnologia, porCluster, porHorario) {
+      // Tecnologia principal
+      let mainTech = Object.entries(porTecnologia).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('mainTech').textContent = mainTech ? `${mainTech[0]} (${mainTech[1]})` : '-';
+      
+      // Cluster principal
+      let mainCluster = Object.entries(porCluster).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('mainCluster').textContent = mainCluster ? `${mainCluster[0]} (${mainCluster[1]})` : '-';
+      
+      // Horário pico
+      let peakTime = Object.entries(porHorario).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('peakTime').textContent = peakTime ? `${peakTime[0]}h (${peakTime[1]})` : '-';
     }
 
     function generateTable(data, traduzirLogin = false) {
-      let rows = '<table><tr><th>Chave</th><th>Volume</th></tr>';
-      Object.entries(data).forEach(([key, value]) => {
-        const nome = traduzirLogin && nomesPorLogin[key] ? `${nomesPorLogin[key]} (${key})` : key;
-        rows += `<tr><td>${nome}</td><td>${value}</td></tr>`;
-      });
+      let rows = '<table class="table table-hover mt-3"><tr><th>Item</th><th>Volume</th><th>%</th></tr>';
+      const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+      
+      Object.entries(data)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([key, value]) => {
+          const nome = traduzirLogin && nomesPorLogin[key] ? `${nomesPorLogin[key]} (${key})` : key;
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+          rows += `<tr>
+            <td>${nome}</td>
+            <td>${value}</td>
+            <td>${percentage}%</td>
+          </tr>`;
+        });
       return rows + '</table>';
     }
+
+    function createCharts(porLogin, porCluster, porHorario, porTecnologia) {
+      // Gráfico por Login
+      createChart(
+        'loginChart',
+        'bar',
+        Object.entries(porLogin)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([key, value]) => nomesPorLogin[key] ? nomesPorLogin[key] : key),
+        Object.entries(porLogin)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([key, value]) => value),
+        'Top 10 Técnicos por Volume de Outages'
+      );
+
+      // Gráfico por Cluster
+      createChart(
+        'clusterChart',
+        'doughnut',
+        Object.entries(porCluster)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, value]) => key),
+        Object.entries(porCluster)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, value]) => value),
+        'Outages por Cluster'
+      );
+
+      // Gráfico por Horário
+      createChart(
+        'timeChart',
+        'line',
+        Object.entries(porHorario)
+          .sort((a, b) => a[0] - b[0])
+          .map(([key, value]) => `${key}h`),
+        Object.entries(porHorario)
+          .sort((a, b) => a[0] - b[0])
+          .map(([key, value]) => value),
+        'Outages por Horário do Dia'
+      );
+
+      // Gráfico por Tecnologia
+      createChart(
+        'techChart',
+        'polarArea',
+        Object.entries(porTecnologia)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, value]) => key),
+        Object.entries(porTecnologia)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, value]) => value),
+        'Outages por Tecnologia'
+      );
+    }
+
+    function createChart(id, type, labels, data, title) {
+      const ctx = document.getElementById(id).getContext('2d');
+      new Chart(ctx, {
+        type: type,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: data,
+            backgroundColor: getChartColors(type, data.length),
+            borderColor: '#ddd',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+            },
+            title: {
+              display: true,
+              text: title,
+              font: {
+                size: 14
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function getChartColors(type, count) {
+      const colors = [
+        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+        '#5a5c69', '#858796', '#3a3b45', '#2e59d9', '#17a673',
+        '#2c9faf', '#dda20a', '#be2617', '#6f707e', '#5d5e6c'
+      ];
+      
+      if (type === 'polarArea') {
+        return colors.slice(0, count);
+      }
+      
+      // Para outros tipos, repetir cores se necessário
+      let result = [];
+      for (let i = 0; i < count; i++) {
+        result.push(colors[i % colors.length]);
+      }
+      return result;
+    }
+
+    function exportToExcel(type) {
+      // Implementar lógica de exportação para Excel
+      alert(`Exportar dados ${type} para Excel - Funcionalidade em desenvolvimento`);
+    }
+
+    // Adicionar efeito de drag and drop
+    const uploadArea = document.querySelector('.upload-area');
+    const fileInput = document.getElementById('fileUpload');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#0d6efd';
+      uploadArea.style.backgroundColor = '#e7f1ff';
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.borderColor = '#6c757d';
+      uploadArea.style.backgroundColor = 'white';
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#6c757d';
+      uploadArea.style.backgroundColor = 'white';
+      
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        const event = new Event('change');
+        fileInput.dispatchEvent(event);
+      }
+    });
   </script>
 </body>
 </html>
