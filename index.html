@@ -83,6 +83,20 @@
     .export-btn {
       margin-left: 10px;
     }
+    .scrollable-table {
+      max-height: 400px;
+      overflow-y: auto;
+      display: block;
+      margin-bottom: 20px;
+    }
+    .scrollable-table table {
+      width: 100%;
+    }
+    .debug-info {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -130,6 +144,7 @@
             <div class="card-body text-center">
               <h6 class="card-subtitle mb-2 text-muted">Total de Outages</h6>
               <div class="total-outages" id="totalOutages">0</div>
+              <div class="debug-info" id="totalDebug"></div>
             </div>
           </div>
         </div>
@@ -212,6 +227,7 @@
           });
 
           if (index === files.length - 1) {
+            console.log("Dados brutos carregados:", allData);
             initializeFilters();
             processData(allData);
           }
@@ -226,7 +242,7 @@
       const techSet = new Set();
       allData.forEach(row => {
         const tech = row["TECNOLOGIA"] || "Indefinido";
-        techSet.add(tech);
+        techSet.add(tech.toString().trim());
       });
       techFilter.innerHTML = '<option value="all">Todas</option>';
       Array.from(techSet).sort().forEach(tech => {
@@ -239,7 +255,7 @@
       const clusterSet = new Set();
       allData.forEach(row => {
         const cluster = row["CLUSTER"] || "Indefinido";
-        clusterSet.add(cluster);
+        clusterSet.add(cluster.toString().trim());
       });
       clusterFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(clusterSet).sort().forEach(cluster => {
@@ -253,10 +269,10 @@
       allData.forEach(row => {
         let horario = "00";
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0');
+          horario = row["HORA"].toString().padStart(2, '0').trim();
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0');
+          if (match) horario = match[1].padStart(2, '0').trim();
         }
         timeSet.add(horario);
       });
@@ -271,7 +287,7 @@
       const loginSet = new Set();
       allData.forEach(row => {
         const login = row["LOGIN"] || "Desconhecido";
-        loginSet.add(login);
+        loginSet.add(login.toString().trim());
       });
       loginFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(loginSet).sort().forEach(login => {
@@ -294,25 +310,25 @@
     function filterData(data) {
       return data.filter(row => {
         // Filtro por tecnologia
-        const tech = row["TECNOLOGIA"] || "Indefinido";
+        const tech = (row["TECNOLOGIA"] || "Indefinido").toString().trim();
         if (currentFilters.technology !== 'all' && tech !== currentFilters.technology) return false;
         
         // Filtro por cluster
-        const cluster = row["CLUSTER"] || "Indefinido";
+        const cluster = (row["CLUSTER"] || "Indefinido").toString().trim();
         if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster) return false;
         
         // Filtro por horário
         let horario = "00";
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0');
+          horario = row["HORA"].toString().padStart(2, '0').trim();
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0');
+          if (match) horario = match[1].padStart(2, '0').trim();
         }
         if (currentFilters.time !== 'all' && horario !== currentFilters.time) return false;
         
         // Filtro por login
-        const login = row["LOGIN"] || "Desconhecido";
+        const login = (row["LOGIN"] || "Desconhecido").toString().trim();
         if (currentFilters.login !== 'all' && login !== currentFilters.login) return false;
         
         return true;
@@ -326,6 +342,7 @@
       // Mostrar seção de resumo
       document.getElementById('summary').style.display = 'block';
       document.getElementById('totalOutages').textContent = totalOutages;
+      document.getElementById('totalDebug').textContent = `Registros totais: ${data.length} | Filtrados: ${totalOutages}`;
 
       const porLogin = {};
       const porCluster = {};
@@ -333,34 +350,38 @@
       const porTecnologia = {};
 
       filteredData.forEach((row) => {
-        const login = row["LOGIN"] || "Desconhecido";
-        const cluster = row["CLUSTER"] || "Indefinido";
-        const tecnologia = row["TECNOLOGIA"] || "Indefinido";
+        const login = (row["LOGIN"] || "Desconhecido").toString().trim();
+        const cluster = (row["CLUSTER"] || "Indefinido").toString().trim();
+        const tecnologia = (row["TECNOLOGIA"] || "Indefinido").toString().trim();
         let horario = "00";
 
         if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0');
+          horario = row["HORA"].toString().padStart(2, '0').trim();
         } else if (row["INICIO"]) {
           const match = row["INICIO"].toString().match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0');
+          if (match) horario = match[1].padStart(2, '0').trim();
         }
 
-        // Volume por login
-        if (!porLogin[login]) porLogin[login] = 0;
-        porLogin[login]++;
+        // Contagem por login
+        porLogin[login] = (porLogin[login] || 0) + 1;
 
-        // Volume por cluster
-        if (!porCluster[cluster]) porCluster[cluster] = 0;
-        porCluster[cluster]++;
+        // Contagem por cluster
+        porCluster[cluster] = (porCluster[cluster] || 0) + 1;
 
-        // Volume por horário
-        if (!porHorario[horario]) porHorario[horario] = 0;
-        porHorario[horario]++;
+        // Contagem por horário
+        porHorario[horario] = (porHorario[horario] || 0) + 1;
 
-        // Volume por tecnologia
-        if (!porTecnologia[tecnologia]) porTecnologia[tecnologia] = 0;
-        porTecnologia[tecnologia]++;
+        // Contagem por tecnologia
+        porTecnologia[tecnologia] = (porTecnologia[tecnologia] || 0) + 1;
       });
+
+      // Verificação de consistência
+      const totalPorLogin = Object.values(porLogin).reduce((a, b) => a + b, 0);
+      console.log("Total por login:", totalPorLogin, "Total outages:", totalOutages);
+      
+      if (totalPorLogin !== totalOutages) {
+        console.warn("Discrepância encontrada: soma por login diferente do total");
+      }
 
       // Atualizar resumo
       updateSummary(porTecnologia, porCluster, porHorario);
@@ -457,13 +478,13 @@
     }
 
     function generateTable(data, traduzirLogin = false) {
-      let rows = '<table class="table table-hover mt-3"><tr><th>Item</th><th>Volume</th><th>%</th></tr>';
+      const scrollClass = traduzirLogin ? 'scrollable-table' : '';
+      let rows = `<div class="${scrollClass}"><table class="table table-hover mt-3"><tr><th>Técnico</th><th>Volume</th><th>%</th></tr>`;
       const total = Object.values(data).reduce((sum, value) => sum + value, 0);
       
       Object.entries(data)
         .sort((a, b) => b[1] - a[1])
         .forEach(([key, value]) => {
-          // Prioriza nomes completos para logins conhecidos
           const nome = traduzirLogin ? (nomesPorLogin[key] || key) : key;
           const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
           rows += `<tr>
@@ -472,7 +493,7 @@
             <td>${percentage}%</td>
           </tr>`;
         });
-      return rows + '</table>';
+      return rows + '</table></div>';
     }
 
     function createCharts(porLogin, porCluster, porHorario, porTecnologia) {
