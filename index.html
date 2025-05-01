@@ -320,17 +320,8 @@
     // Objeto para armazenar os toasts
     const toasts = {};
 
-    // Inicializar toasts quando o DOM estiver carregado
-    document.addEventListener('DOMContentLoaded', function() {
-      // Inicializar toast de sucesso
-      const successToastEl = document.getElementById('successToast');
-      toasts.success = new bootstrap.Toast(successToastEl, {
-        autohide: true,
-        delay: 5000
-      });
-    });
-
-    const nomesPorLogin = {
+    // Lista de técnicos que devem ser exibidos individualmente
+    const tecnicosEspecificos = {
       "N0238475": "MARLEY MARQUES RIBEIRO",
       "N5923221": "KELLY PINHEIRO LIRA",
       "F160641": "JENNIFER MARIA ANDRADE SANTOS",
@@ -343,7 +334,7 @@
       "N5932090": "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA",
       "N0255801": "ELBERTON ANICETO HENRIQUE",
       "N4014011": "ALAN MARINHO DIAS",
-      "N5923996": "JULIO CESAR SANTOS SOARES",
+      "N5923996": "JULIO CESAR SANTOS SOARES"
     };
 
     let allData = [];
@@ -353,6 +344,16 @@
       time: 'all',
       login: 'all'
     };
+
+    // Inicializar toasts quando o DOM estiver carregado
+    document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar toast de sucesso
+      const successToastEl = document.getElementById('successToast');
+      toasts.success = new bootstrap.Toast(successToastEl, {
+        autohide: true,
+        delay: 5000
+      });
+    });
 
     document.getElementById('fileUpload').addEventListener('change', handleFiles, false);
     document.getElementById('technologyFilter').addEventListener('change', applyFilters);
@@ -495,7 +496,7 @@
       });
       loginFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(loginSet).sort().forEach(login => {
-        const nome = nomesPorLogin[login] || login;
+        const nome = tecnicosEspecificos[login] || login;
         loginFilter.innerHTML += `<option value="${login}">${nome}</option>`;
       });
       loginFilter.disabled = false;
@@ -557,7 +558,7 @@
       const porTecnologia = {};
 
       filteredData.forEach((row) => {
-        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim().toUpperCase();
+        const login = (row["LOGIN"] || row["Login"] || row["LOGIN"] || "Desconhecido").toString().trim().toUpperCase();
         const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
         const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
         let horario = "00";
@@ -608,13 +609,34 @@
       // Cores da Claro Brasil
       const claroColors = ['#00A1E0', '#FF6D00', '#0033A0', '#00B5AD', '#FFB81C', '#A8A8A8'];
 
-      // Gráfico por Login
+      // Preparar dados para o gráfico de técnicos
+      const loginDataForChart = {};
+      let outrosTecnicos = 0;
+      
+      Object.entries(porLogin).forEach(([login, volume]) => {
+        if (tecnicosEspecificos[login]) {
+          loginDataForChart[login] = volume;
+        } else {
+          outrosTecnicos += volume;
+        }
+      });
+      
+      // Adicionar "Outros Técnicos" se houver volume
+      if (outrosTecnicos > 0) {
+        loginDataForChart["OUTROS"] = outrosTecnicos;
+      }
+      
+      // Gráfico por Login (apenas técnicos da lista + "Outros")
       createChart(
         'loginChart',
         'bar',
-        Object.entries(porLogin).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([key]) => nomesPorLogin[key] || key),
-        Object.entries(porLogin).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([, value]) => value),
-        'Top 10 Técnicos',
+        Object.entries(loginDataForChart)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key]) => key === "OUTROS" ? "Outros Técnicos" : (tecnicosEspecificos[key] || key)),
+        Object.entries(loginDataForChart)
+          .sort((a, b) => b[1] - a[1])
+          .map(([, value]) => value),
+        'Volume por Técnico',
         claroColors
       );
 
@@ -658,11 +680,32 @@
         return;
       }
       
-      tableBody.innerHTML = Object.entries(data)
-        .sort((a, b) => b[1] - a[1])
-        .map(([key, value]) => {
-          const nome = isLogin ? (nomesPorLogin[key] || key) : key;
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+      if (isLogin) {
+        // Processamento especial para a tabela de logins
+        let filteredData = {};
+        let outrosTecnicos = 0;
+        
+        // Separar técnicos da lista e consolidar os demais
+        Object.entries(data).forEach(([login, volume]) => {
+          if (tecnicosEspecificos[login]) {
+            filteredData[login] = volume;
+          } else {
+            outrosTecnicos += volume;
+          }
+        });
+        
+        // Adicionar "Outros Técnicos" se houver volume
+        if (outrosTecnicos > 0) {
+          filteredData["OUTROS"] = outrosTecnicos;
+        }
+        
+        // Ordenar por volume (decrescente)
+        const sortedData = Object.entries(filteredData).sort((a, b) => b[1] - a[1]);
+        
+        // Gerar linhas da tabela
+        tableBody.innerHTML = sortedData.map(([key, value]) => {
+          const nome = key === "OUTROS" ? "Outros Técnicos" : (tecnicosEspecificos[key] || key);
+          const percentage = ((value / total) * 100).toFixed(1);
           return `
             <tr>
               <td>${nome}</td>
@@ -670,8 +713,23 @@
               <td>${percentage}%</td>
             </tr>
           `;
-        })
-        .join('');
+        }).join('');
+      } else {
+        // Processamento normal para outras tabelas
+        tableBody.innerHTML = Object.entries(data)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, value]) => {
+            const nome = key;
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `
+              <tr>
+                <td>${nome}</td>
+                <td>${value}</td>
+                <td>${percentage}%</td>
+              </tr>
+            `;
+          }).join('');
+      }
     }
 
     function createChart(id, type, labels, data, title, colors) {
