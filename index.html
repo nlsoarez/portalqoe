@@ -84,10 +84,63 @@
       display: block;
       margin-bottom: 20px;
     }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      flex-direction: column;
+      color: white;
+    }
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+    }
+    .progress {
+      width: 50%;
+      margin-top: 20px;
+    }
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1100;
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Loading Overlay (inicialmente oculto) -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Carregando...</span>
+      </div>
+      <div class="mt-3">Processando arquivos, por favor aguarde...</div>
+      <div class="progress mt-3">
+        <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+             role="progressbar" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Toast de conclusão -->
+    <div class="toast-container">
+      <div id="successToast" class="toast align-items-center text-white bg-success" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            Arquivos processados com sucesso!
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    </div>
+
     <h1 class="text-center mb-4" style="color: #00A1E0;">Análise de Outages - Claro Brasil</h1>
     
     <div class="upload-area">
@@ -257,6 +310,10 @@
   </div>
 
   <script>
+    // Adicionando suporte para Toast do Bootstrap
+    const toastElList = document.querySelectorAll('.toast')
+    const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 }))
+
     const nomesPorLogin = {
       "N0238475": "MARLEY MARQUES RIBEIRO",
       "N5923221": "KELLY PINHEIRO LIRA",
@@ -271,7 +328,6 @@
       "N0255801": "ELBERTON ANICETO HENRIQUE",
       "N4014011": "ALAN MARINHO DIAS",
       "N5923996": "JULIO CESAR SANTOS SOARES",
-      // Adicione outros técnicos conforme necessário
     };
 
     let allData = [];
@@ -288,17 +344,60 @@
     document.getElementById('timeFilter').addEventListener('change', applyFilters);
     document.getElementById('loginFilter').addEventListener('change', applyFilters);
 
-    function handleFiles(e) {
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+      document.getElementById('loadingProgress').style.width = '0%';
+    }
+
+    function updateProgress(percent) {
+      document.getElementById('loadingProgress').style.width = `${percent}%`;
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      // Mostrar toast de sucesso
+      const successToast = bootstrap.Toast.getInstance(document.getElementById('successToast'));
+      successToast.show();
+    }
+
+    async function handleFiles(e) {
       const files = e.target.files;
       allData = [];
-      const readers = [];
       
       if (files.length === 0) return;
 
-      Array.from(files).forEach((file) => {
+      showLoading();
+      
+      try {
+        const fileCount = files.length;
+        let processedCount = 0;
+        
+        const results = await Promise.all(Array.from(files).map(async (file) => {
+          const fileData = await readFile(file);
+          processedCount++;
+          updateProgress(Math.round((processedCount / fileCount) * 100));
+          return fileData;
+        }));
+        
+        allData = results.flat();
+        console.log("Total de registros carregados:", allData.length);
+        
+        initializeFilters();
+        processData(allData);
+        hideLoading();
+      } catch (error) {
+        console.error("Erro ao ler arquivos:", error);
+        hideLoading();
+        alert("Erro ao processar arquivos. Verifique o console para detalhes.");
+      }
+    }
+
+    function readFile(file) {
+      return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        readers.push(new Promise((resolve) => {
-          reader.onload = (evt) => {
+        
+        reader.onload = (evt) => {
+          try {
             const data = new Uint8Array(evt.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             
@@ -310,20 +409,16 @@
             });
             
             resolve(sheetData);
-          };
-          reader.readAsArrayBuffer(file);
-        }));
-      });
-
-      Promise.all(readers).then((results) => {
-        allData = results.flat();
-        console.log("Total de registros carregados:", allData.length);
+          } catch (error) {
+            reject(error);
+          }
+        };
         
-        initializeFilters();
-        processData(allData);
-      }).catch((error) => {
-        console.error("Erro ao ler arquivos:", error);
-        alert("Erro ao processar arquivos. Verifique o console para detalhes.");
+        reader.onerror = () => {
+          reject(new Error('Erro ao ler o arquivo'));
+        };
+        
+        reader.readAsArrayBuffer(file);
       });
     }
 
@@ -332,8 +427,8 @@
       const techFilter = document.getElementById('technologyFilter');
       const techSet = new Set();
       allData.forEach(row => {
-        const tech = row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido";
-        techSet.add(tech.toString().trim().toUpperCase());
+        const tech = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
+        if (tech) techSet.add(tech);
       });
       techFilter.innerHTML = '<option value="all">Todas</option>';
       Array.from(techSet).sort().forEach(tech => {
@@ -345,8 +440,8 @@
       const clusterFilter = document.getElementById('clusterFilter');
       const clusterSet = new Set();
       allData.forEach(row => {
-        const cluster = row["CLUSTER"] || row["Cluster"] || "Indefinido";
-        clusterSet.add(cluster.toString().trim().toUpperCase());
+        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
+        if (cluster) clusterSet.add(cluster);
       });
       clusterFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(clusterSet).sort().forEach(cluster => {
@@ -378,8 +473,8 @@
       const loginFilter = document.getElementById('loginFilter');
       const loginSet = new Set();
       allData.forEach(row => {
-        const login = (row["LOGIN"] || row["Login"] || row["LOGIN"] || "Desconhecido").toString().trim().toUpperCase();
-        loginSet.add(login);
+        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim().toUpperCase();
+        if (login) loginSet.add(login);
       });
       loginFilter.innerHTML = '<option value="all">Todos</option>';
       Array.from(loginSet).sort().forEach(login => {
@@ -404,11 +499,11 @@
         if (!row) return false;
         
         // Filtro por tecnologia (case insensitive)
-        const tech = ((row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
+        const tech = ((row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase());
         if (currentFilters.technology !== 'all' && tech !== currentFilters.technology.toUpperCase()) return false;
         
         // Filtro por cluster (case insensitive)
-        const cluster = ((row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
+        const cluster = ((row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase());
         if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster.toUpperCase()) return false;
         
         // Filtro por horário
@@ -443,7 +538,7 @@
       const porTecnologia = {};
 
       filteredData.forEach((row) => {
-        const login = (row["LOGIN"] || row["Login"] || row["LOGIN"] || "Desconhecido").toString().trim().toUpperCase();
+        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim().toUpperCase();
         const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
         const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
         let horario = "00";
@@ -457,10 +552,10 @@
         }
 
         // Contagem por categoria
-        porLogin[login] = (porLogin[login] || 0) + 1;
-        porCluster[cluster] = (porCluster[cluster] || 0) + 1;
-        porHorario[horario] = (porHorario[horario] || 0) + 1;
-        porTecnologia[tecnologia] = (porTecnologia[tecnologia] || 0) + 1;
+        if (login) porLogin[login] = (porLogin[login] || 0) + 1;
+        if (cluster) porCluster[cluster] = (porCluster[cluster] || 0) + 1;
+        if (horario) porHorario[horario] = (porHorario[horario] || 0) + 1;
+        if (tecnologia) porTecnologia[tecnologia] = (porTecnologia[tecnologia] || 0) + 1;
       });
 
       // Atualizar resumo
@@ -543,7 +638,7 @@
         .sort((a, b) => b[1] - a[1])
         .map(([key, value]) => {
           const nome = isLogin ? (nomesPorLogin[key] || key) : key;
-          const percentage = ((value / total) * 100).toFixed(1);
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
           return `
             <tr>
               <td>${nome}</td>
@@ -561,6 +656,15 @@
       // Destruir gráfico anterior se existir
       if (ctx.chart) {
         ctx.chart.destroy();
+      }
+      
+      // Verificar se há dados para mostrar
+      if (data.length === 0 || data.every(val => val === 0)) {
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Nenhum dado disponível para exibição', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
       }
       
       ctx.chart = new Chart(ctx, {
