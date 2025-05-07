@@ -1,788 +1,458 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Análise de Outages - Claro Brasil</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <meta charset="UTF-8">
+  <title>Banco de Horas - Controle Mensal</title>
   <style>
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f8f9fa;
-      padding: 20px;
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
     }
     .container {
       max-width: 1200px;
       margin: 0 auto;
     }
-    .upload-area {
-      border: 2px dashed #6c757d;
-      padding: 30px;
-      text-align: center;
-      border-radius: 10px;
-      background-color: white;
-      margin-bottom: 30px;
-      transition: all 0.3s;
-    }
-    .upload-area:hover {
-      border-color: #00A1E0;
-      background-color: #f8f9ff;
-    }
-    .card {
-      margin-bottom: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .card-header {
-      font-weight: 600;
-      background-color: #00A1E0;
-      color: white;
-      border-radius: 10px 10px 0 0 !important;
-      cursor: pointer;
+    h2 {
+      color: #2c3e50;
+      border-bottom: 2px solid #f2c9a0;
+      padding-bottom: 10px;
     }
     table {
       border-collapse: collapse;
       width: 100%;
-      margin-top: 10px;
-      font-size: 14px;
+      margin-top: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     th, td {
-      border: 1px solid #dee2e6;
-      padding: 10px;
-      text-align: left;
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
     }
     th {
-      background-color: #f1f1f1;
-      font-weight: 600;
-    }
-    tr:hover {
-      background-color: #f8f9fa;
-    }
-    .chart-container {
-      position: relative;
-      height: 300px;
-      margin-bottom: 30px;
-    }
-    .filter-section {
-      background-color: white;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    .total-outages {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #00A1E0;
-    }
-    .scrollable-table {
-      max-height: 400px;
-      overflow-y: auto;
-      display: block;
-      margin-bottom: 20px;
-    }
-    .loading-overlay {
-      position: fixed;
+      background-color: #f2c9a0;
+      position: sticky;
       top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      flex-direction: column;
+    }
+    .violacao {
+      background-color: #ff6666;
       color: white;
+      font-weight: bold;
     }
-    .spinner-border {
-      width: 3rem;
-      height: 3rem;
+    .excesso {
+      background-color: #ffcccc;
     }
-    .progress {
-      width: 50%;
-      margin-top: 20px;
+    .saldo-negativo {
+      background-color: #ff9999;
     }
-    .toast-container {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 1100;
+    .legenda {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
     }
-    .no-data {
-      text-align: center;
-      color: #666;
-      font-style: italic;
-      padding: 20px;
+    .legenda-item {
+      display: flex;
+      align-items: center;
+    }
+    .legenda-cor {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border: 1px solid #ddd;
+    }
+    .total {
+      font-weight: bold;
+      background-color: #e6e6e6;
+    }
+    .controles {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f0f8ff;
+      border-radius: 5px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: inline-block;
+      width: 150px;
+      font-weight: bold;
+    }
+    input, select {
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    button {
+      padding: 8px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .filtros {
+      margin-bottom: 15px;
+    }
+    .destaque {
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Loading Overlay (inicialmente oculto) -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-      <div class="spinner-border" role="status">
-        <span class="visually-hidden">Carregando...</span>
-      </div>
-      <div class="mt-3">Processando arquivos, por favor aguarde...</div>
-      <div class="progress mt-3">
-        <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
-             role="progressbar" style="width: 0%"></div>
-      </div>
-    </div>
+<div class="container">
+  <h2>Banco de Horas - Controle Mensal</h2>
 
-    <!-- Toast de conclusão -->
-    <div class="toast-container">
-      <div id="successToast" class="toast align-items-center text-white bg-success" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            Arquivos processados com sucesso!
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
+  <div class="legenda">
+    <div class="legenda-item">
+      <span class="legenda-cor" style="background-color: #ff6666;"></span>
+      Violação: 3+ meses consecutivos >10h
     </div>
-
-    <h1 class="text-center mb-4" style="color: #00A1E0;">Análise de Outages - Claro Brasil</h1>
-    
-    <div class="upload-area">
-      <input type="file" id="fileUpload" class="form-control" multiple accept=".xlsx,.xls" />
-      <p class="mt-2 text-muted">Arraste e solte ou clique para selecionar planilhas Excel</p>
+    <div class="legenda-item">
+      <span class="legenda-cor" style="background-color: #ffcccc;"></span>
+      Mês com >10h
     </div>
-
-    <div class="filter-section">
-      <div class="row">
-        <div class="col-md-3">
-          <label for="technologyFilter" class="form-label">Filtrar por Tecnologia:</label>
-          <select id="technologyFilter" class="form-select" disabled>
-            <option value="all">Todas</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="clusterFilter" class="form-label">Filtrar por Cluster:</label>
-          <select id="clusterFilter" class="form-select" disabled>
-            <option value="all">Todos</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="timeFilter" class="form-label">Filtrar por Horário:</label>
-          <select id="timeFilter" class="form-select" disabled>
-            <option value="all">Todos</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="loginFilter" class="form-label">Filtrar por Técnico:</label>
-          <select id="loginFilter" class="form-select" disabled>
-            <option value="all">Todos</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div id="summary" class="mb-4" style="display: none;">
-      <div class="row">
-        <div class="col-md-3">
-          <div class="card">
-            <div class="card-body text-center">
-              <h6 class="card-subtitle mb-2 text-muted">Total de Outages</h6>
-              <div class="total-outages" id="totalOutages">0</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card">
-            <div class="card-body text-center">
-              <h6 class="card-subtitle mb-2 text-muted">Tecnologia Principal</h6>
-              <div class="total-outages" id="mainTech">-</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card">
-            <div class="card-body text-center">
-              <h6 class="card-subtitle mb-2 text-muted">Cluster Principal</h6>
-              <div class="total-outages" id="mainCluster">-</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card">
-            <div class="card-body text-center">
-              <h6 class="card-subtitle mb-2 text-muted">Horário Pico</h6>
-              <div class="total-outages" id="peakTime">-</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Volume por Técnico</div>
-          <div class="card-body">
-            <div class="chart-container">
-              <canvas id="loginChart"></canvas>
-            </div>
-            <div class="scrollable-table">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Técnico</th>
-                    <th>Volume</th>
-                    <th>%</th>
-                  </tr>
-                </thead>
-                <tbody id="loginTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Volume por Cluster</div>
-          <div class="card-body">
-            <div class="chart-container">
-              <canvas id="clusterChart"></canvas>
-            </div>
-            <div class="scrollable-table">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Cluster</th>
-                    <th>Volume</th>
-                    <th>%</th>
-                  </tr>
-                </thead>
-                <tbody id="clusterTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row mt-4">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Volume por Horário</div>
-          <div class="card-body">
-            <div class="chart-container">
-              <canvas id="timeChart"></canvas>
-            </div>
-            <div class="scrollable-table">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Horário</th>
-                    <th>Volume</th>
-                    <th>%</th>
-                  </tr>
-                </thead>
-                <tbody id="timeTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Volume por Tecnologia</div>
-          <div class="card-body">
-            <div class="chart-container">
-              <canvas id="techChart"></canvas>
-            </div>
-            <div class="scrollable-table">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Tecnologia</th>
-                    <th>Volume</th>
-                    <th>%</th>
-                  </tr>
-                </thead>
-                <tbody id="techTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="legenda-item">
+      <span class="legenda-cor" style="background-color: #ff9999;"></span>
+      Saldo negativo
     </div>
   </div>
 
-  <script>
-    // Objeto para armazenar os toasts
-    const toasts = {};
+  <div class="controles">
+    <h3>Adicionar Novo Mês</h3>
+    <div class="form-group">
+      <label for="novoMes">Mês:</label>
+      <select id="novoMes">
+        <option value="1">Junho</option>
+        <option value="2">Julho</option>
+        <option value="3">Agosto</option>
+        <option value="4">Setembro</option>
+        <option value="5">Outubro</option>
+        <option value="6">Novembro</option>
+        <option value="7">Dezembro</option>
+      </select>
+    </div>
+    <button onclick="adicionarMes()">Adicionar Mês</button>
+    <button onclick="exportarDados()">Exportar Dados</button>
+    <button onclick="importarDados()">Importar Dados</button>
+  </div>
 
-    // Lista de técnicos que devem ser exibidos individualmente
-    const tecnicosEspecificos = {
-      "N0238475": "MARLEY MARQUES RIBEIRO",
-      "N5923221": "KELLY PINHEIRO LIRA",
-      "F160641": "JENNIFER MARIA ANDRADE SANTOS",
-      "N5772086": "THIAGO PEREIRA DA SILVA",
-      "N0239871": "LEONARDO FERREIRA LIMA DE ALMEIDA",
-      "N5577565": "MARISTELLA MARCIA DOS SANTOS",
-      "N5737414": "SANDRO DA SILVA CARVALHO",
-      "N5972428": "CRISTIANE HERMOGENES DA SILVA",
-      "N6173055": "JEFFERSON LUIS GONÇALVES COITINHO",
-      "N5932090": "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA",
-      "N0255801": "ELBERTON ANICETO HENRIQUE",
-      "N4014011": "ALAN MARINHO DIAS",
-      "N5923996": "JULIO CESAR SANTOS SOARES"
-    };
+  <div class="filtros">
+    <label for="filtroNome">Filtrar por nome:</label>
+    <input type="text" id="filtroNome" onkeyup="filtrarTabela()" placeholder="Digite o nome...">
+    <label for="filtroViolacao" style="margin-left: 20px;">
+      <input type="checkbox" id="filtroViolacao" onchange="filtrarTabela()"> Mostrar apenas violações
+    </label>
+  </div>
 
-    let allData = [];
-    let currentFilters = {
-      technology: 'all',
-      cluster: 'all',
-      time: 'all',
-      login: 'all'
-    };
+  <table id="tabelaHoras">
+    <thead>
+      <tr>
+        <th>Analista</th>
+        <th>Maio</th>
+        <!-- Novos meses serão adicionados aqui -->
+        <th>Total</th>
+        <th>Meses >10h</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Dados serão inseridos via JavaScript -->
+    </tbody>
+  </table>
+</div>
 
-    // Inicializar toasts quando o DOM estiver carregado
-    document.addEventListener('DOMContentLoaded', function() {
-      // Inicializar toast de sucesso
-      const successToastEl = document.getElementById('successToast');
-      toasts.success = new bootstrap.Toast(successToastEl, {
-        autohide: true,
-        delay: 5000
+<script>
+  // Dados iniciais - Maio
+  const dadosIniciais = [
+    { nome: "LEANDRO GONÇALVES DE CARVALHO", maio: -4.22 },
+    { nome: "BRUNO COSTA BUCARD", maio: 4.59 },
+    { nome: "IGOR MARCELINO DE MARINS", maio: -0.16 },
+    { nome: "GABRIELA TAVARES DA SILVA", maio: -10.34 },
+    { nome: "MAGNO FERRAREZ DE MORAIS", maio: null },
+    { nome: "DANIEL MARCELO FELISBERTO OLIVEIRA", maio: 8.02 },
+    { nome: "FERNANDA MESQUITA DE FREITAS", maio: 2.42 },
+    { nome: "ROBERTO SILVA DO NASCIMENTO", maio: 2.04 },
+    { nome: "RODRIGO PIRES BERNARDINO", maio: 0.04 },
+    { nome: "SUELLEN HERNANDEZ DA SILVA", maio: 10.08 },
+    { nome: "MONICA DA SILVA RODRIGUES", maio: 10.57 },
+    { nome: "MARLEY MARQUES RIBEIRO", maio: 11.51 },
+    { nome: "KELLY PINHEIRO LIRA", maio: 1.56 },
+    { nome: "JENNIFER MARIA ANDRADE SANTOS", maio: null },
+    { nome: "THIAGO PEREIRA DA SILVA", maio: 9.39 },
+    { nome: "LEONARDO FERREIRA LIMA DE ALMEIDA", maio: 9.27 },
+    { nome: "MARISTELLA MARCIA DOS SANTOS", maio: 1.55 },
+    { nome: "SANDRO DA SILVA CARVALHO", maio: -6.49 },
+    { nome: "CRISTIANE HERMOGENES DA SILVA", maio: 9.55 },
+    { nome: "JEFFERSON LUIS GONÇALVES COITINHO", maio: 14.36 },
+    { nome: "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA", maio: -59 },
+    { nome: "ELBERTON ANICETO HENRIQUE", maio: 8.35 },
+    { nome: "ALAN MARINHO DIAS", maio: 11.45 },
+    { nome: "JULIO CESAR SANTOS SOARES", maio: 13.12 },
+    { nome: "CARLOS EDUARDO BARRETO DE ABREU", maio: 7.07 },
+    { nome: "ROSANA RIEGER MATOS", maio: 10.50 },
+    { nome: "THIAGO DE SOUZA INACIO", maio: 8.40 }
+  ];
+
+  const meses = [
+    { nome: "Maio", id: "maio" },
+    // Outros meses serão adicionados dinamicamente
+  ];
+
+  document.addEventListener('DOMContentLoaded', function() {
+    inicializarTabela();
+  });
+
+  function inicializarTabela() {
+    const tbody = document.querySelector("#tabelaHoras tbody");
+    tbody.innerHTML = "";
+
+    dadosIniciais.forEach(funcionario => {
+      const row = document.createElement("tr");
+      
+      // Nome do funcionário
+      const nomeCell = document.createElement("td");
+      nomeCell.textContent = funcionario.nome;
+      row.appendChild(nomeCell);
+
+      // Células para cada mês
+      meses.forEach(mes => {
+        const cell = document.createElement("td");
+        const valor = funcionario[mes.id];
+        cell.textContent = valor !== null ? valor.toFixed(2) : "";
+        
+        // Destacar valores > 10
+        if (valor > 10) {
+          cell.classList.add("excesso");
+        }
+        
+        // Destacar valores negativos
+        if (valor < 0) {
+          cell.classList.add("saldo-negativo");
+        }
+        
+        row.appendChild(cell);
       });
+
+      // Célula de total
+      const totalCell = document.createElement("td");
+      totalCell.classList.add("total");
+      row.appendChild(totalCell);
+
+      // Célula de meses com excesso
+      const excessoCell = document.createElement("td");
+      row.appendChild(excessoCell);
+
+      // Célula de status
+      const statusCell = document.createElement("td");
+      row.appendChild(statusCell);
+
+      tbody.appendChild(row);
     });
 
-    document.getElementById('fileUpload').addEventListener('change', handleFiles, false);
-    document.getElementById('technologyFilter').addEventListener('change', applyFilters);
-    document.getElementById('clusterFilter').addEventListener('change', applyFilters);
-    document.getElementById('timeFilter').addEventListener('change', applyFilters);
-    document.getElementById('loginFilter').addEventListener('change', applyFilters);
+    atualizarTotais();
+    verificarViolacoes();
+  }
 
-    function showLoading() {
-      document.getElementById('loadingOverlay').style.display = 'flex';
-      document.getElementById('loadingProgress').style.width = '0%';
+  function adicionarMes() {
+    const select = document.getElementById("novoMes");
+    const mesIndex = parseInt(select.value);
+    const mesesNomes = ["Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    
+    if (meses.length >= 8) {
+      alert("Todos os meses já foram adicionados!");
+      return;
     }
 
-    function updateProgress(percent) {
-      document.getElementById('loadingProgress').style.width = `${percent}%`;
+    const novoMes = {
+      nome: mesesNomes[mesIndex],
+      id: mesesNomes[mesIndex].toLowerCase()
+    };
+
+    meses.push(novoMes);
+
+    // Adicionar coluna no cabeçalho
+    const thead = document.querySelector("#tabelaHoras thead tr");
+    const th = document.createElement("th");
+    th.textContent = novoMes.nome;
+    thead.insertBefore(th, thead.querySelector(".total"));
+
+    // Adicionar células para cada funcionário
+    const tbody = document.querySelector("#tabelaHoras tbody");
+    const rows = tbody.querySelectorAll("tr");
+
+    rows.forEach((row, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = ""; // Valor vazio inicialmente
+      cell.contentEditable = "true";
+      cell.addEventListener("blur", function() {
+        const valor = parseFloat(this.textContent) || null;
+        dadosIniciais[index][novoMes.id] = valor;
+        atualizarTotais();
+        verificarViolacoes();
+      });
+      row.insertBefore(cell, row.querySelector(".total"));
+    });
+
+    // Atualizar o select para o próximo mês
+    if (mesIndex < 6) {
+      select.value = mesIndex + 1;
+    } else {
+      select.disabled = true;
     }
 
-    function hideLoading() {
-      document.getElementById('loadingOverlay').style.display = 'none';
-      // Mostrar toast de sucesso
-      if (toasts.success) {
-        toasts.success.show();
+    alert(`Mês ${novoMes.nome} adicionado com sucesso! Preencha os valores para cada funcionário.`);
+  }
+
+  function atualizarTotais() {
+    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
+
+    rows.forEach((row, index) => {
+      let total = 0;
+      let mesesExcesso = 0;
+
+      // Calcular total e meses com excesso
+      for (let i = 1; i < row.cells.length - 3; i++) {
+        const valor = parseFloat(row.cells[i].textContent) || 0;
+        total += valor;
+        
+        if (valor > 10) {
+          mesesExcesso++;
+        }
       }
-    }
 
-    async function handleFiles(e) {
-      const files = e.target.files;
-      allData = [];
-      
-      if (files.length === 0) return;
+      // Atualizar células de total e excesso
+      row.cells[row.cells.length - 3].textContent = total.toFixed(2);
+      row.cells[row.cells.length - 2].textContent = mesesExcesso;
+    });
+  }
 
-      showLoading();
-      
-      try {
-        const fileCount = files.length;
-        let processedCount = 0;
-        
-        const results = await Promise.all(Array.from(files).map(async (file) => {
-          const fileData = await readFile(file);
-          processedCount++;
-          updateProgress(Math.round((processedCount / fileCount) * 100));
-          return fileData;
-        }));
-        
-        allData = results.flat();
-        console.log("Total de registros carregados:", allData.length);
-        
-        initializeFilters();
-        processData(allData);
-        hideLoading();
-      } catch (error) {
-        console.error("Erro ao ler arquivos:", error);
-        hideLoading();
-        alert("Erro ao processar arquivos. Verifique se os arquivos estão no formato correto.");
-      }
-    }
+  function verificarViolacoes() {
+    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
 
-    function readFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        
-        reader.onload = (evt) => {
-          try {
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            
-            const sheetData = [];
-            workbook.SheetNames.forEach((sheetName) => {
-              const worksheet = workbook.Sheets[sheetName];
-              const jsonData = XLSX.utils.sheet_to_json(worksheet);
-              sheetData.push(...jsonData);
-            });
-            
-            resolve(sheetData);
-          } catch (error) {
-            reject(error);
+    rows.forEach(row => {
+      let contagem = 0;
+      let violou = false;
+
+      // Verificar células de meses (ignorando nome, total, meses >10h e status)
+      for (let i = 1; i < row.cells.length - 3; i++) {
+        const celula = row.cells[i];
+        const valor = parseFloat(celula.textContent) || 0;
+
+        // Resetar classes de cor
+        celula.classList.remove("excesso", "saldo-negativo");
+
+        // Aplicar classes conforme necessário
+        if (valor > 10) {
+          celula.classList.add("excesso");
+          contagem++;
+          
+          if (contagem >= 3) {
+            violou = true;
           }
-        };
-        
-        reader.onerror = () => {
-          reject(new Error('Erro ao ler o arquivo'));
-        };
-        
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    function initializeFilters() {
-      // Tecnologias
-      const techFilter = document.getElementById('technologyFilter');
-      const techSet = new Set();
-      allData.forEach(row => {
-        const tech = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
-        if (tech) techSet.add(tech);
-      });
-      techFilter.innerHTML = '<option value="all">Todas</option>';
-      Array.from(techSet).sort().forEach(tech => {
-        techFilter.innerHTML += `<option value="${tech}">${tech}</option>`;
-      });
-      techFilter.disabled = false;
-
-      // Clusters
-      const clusterFilter = document.getElementById('clusterFilter');
-      const clusterSet = new Set();
-      allData.forEach(row => {
-        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
-        if (cluster) clusterSet.add(cluster);
-      });
-      clusterFilter.innerHTML = '<option value="all">Todos</option>';
-      Array.from(clusterSet).sort().forEach(cluster => {
-        clusterFilter.innerHTML += `<option value="${cluster}">${cluster}</option>`;
-      });
-      clusterFilter.disabled = false;
-
-      // Horários
-      const timeFilter = document.getElementById('timeFilter');
-      const timeSet = new Set();
-      allData.forEach(row => {
-        let horario = "00";
-        if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"] || row["Data/Hora"]) {
-          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
-          const match = dateStr.match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0').trim();
-        }
-        timeSet.add(horario);
-      });
-      timeFilter.innerHTML = '<option value="all">Todos</option>';
-      Array.from(timeSet).sort().forEach(time => {
-        timeFilter.innerHTML += `<option value="${time}">${time}h</option>`;
-      });
-      timeFilter.disabled = false;
-
-      // Logins (case insensitive)
-      const loginFilter = document.getElementById('loginFilter');
-      const loginSet = new Set();
-      allData.forEach(row => {
-        const login = (row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim().toUpperCase();
-        if (login) loginSet.add(login);
-      });
-      loginFilter.innerHTML = '<option value="all">Todos</option>';
-      Array.from(loginSet).sort().forEach(login => {
-        const nome = tecnicosEspecificos[login] || login;
-        loginFilter.innerHTML += `<option value="${login}">${nome}</option>`;
-      });
-      loginFilter.disabled = false;
-    }
-
-    function applyFilters() {
-      currentFilters = {
-        technology: document.getElementById('technologyFilter').value,
-        cluster: document.getElementById('clusterFilter').value,
-        time: document.getElementById('timeFilter').value,
-        login: document.getElementById('loginFilter').value
-      };
-      processData(allData);
-    }
-
-    function filterData(data) {
-      return data.filter(row => {
-        if (!row) return false;
-        
-        // Filtro por tecnologia (case insensitive)
-        const tech = ((row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase());
-        if (currentFilters.technology !== 'all' && tech !== currentFilters.technology.toUpperCase()) return false;
-        
-        // Filtro por cluster (case insensitive)
-        const cluster = ((row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase());
-        if (currentFilters.cluster !== 'all' && cluster !== currentFilters.cluster.toUpperCase()) return false;
-        
-        // Filtro por horário
-        let horario = "00";
-        if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"] || row["Data/Hora"]) {
-          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
-          const match = dateStr.match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0').trim();
-        }
-        if (currentFilters.time !== 'all' && horario !== currentFilters.time) return false;
-        
-        // Filtro por login (case insensitive)
-        const login = ((row["LOGIN"] || row["Login"] || "Desconhecido").toString().trim().toUpperCase());
-        if (currentFilters.login !== 'all' && login !== currentFilters.login.toUpperCase()) return false;
-        
-        return true;
-      });
-    }
-
-    function processData(data) {
-      const filteredData = filterData(data);
-      const totalOutages = filteredData.length;
-      
-      // Mostrar seção de resumo apenas se houver dados
-      const summarySection = document.getElementById('summary');
-      summarySection.style.display = totalOutages > 0 ? 'block' : 'none';
-      document.getElementById('totalOutages').textContent = totalOutages;
-
-      const porLogin = {};
-      const porCluster = {};
-      const porHorario = {};
-      const porTecnologia = {};
-
-      filteredData.forEach((row) => {
-        const login = (row["LOGIN"] || row["Login"] || row["LOGIN"] || "Desconhecido").toString().trim().toUpperCase();
-        const cluster = (row["CLUSTER"] || row["Cluster"] || "Indefinido").toString().trim().toUpperCase();
-        const tecnologia = (row["TECNOLOGIA"] || row["Tecnologia"] || "Indefinido").toString().trim().toUpperCase();
-        let horario = "00";
-
-        if (row["HORA"] !== undefined && row["HORA"] !== null) {
-          horario = row["HORA"].toString().padStart(2, '0').trim();
-        } else if (row["INICIO"] || row["Data/Hora"]) {
-          const dateStr = (row["INICIO"] || row["Data/Hora"]).toString();
-          const match = dateStr.match(/\b(\d{2}):/);
-          if (match) horario = match[1].padStart(2, '0').trim();
-        }
-
-        // Contagem por categoria
-        if (login) porLogin[login] = (porLogin[login] || 0) + 1;
-        if (cluster) porCluster[cluster] = (porCluster[cluster] || 0) + 1;
-        if (horario) porHorario[horario] = (porHorario[horario] || 0) + 1;
-        if (tecnologia) porTecnologia[tecnologia] = (porTecnologia[tecnologia] || 0) + 1;
-      });
-
-      // Atualizar resumo
-      updateSummary(porTecnologia, porCluster, porHorario);
-      
-      // Atualizar tabelas e gráficos básicos
-      updateBasicChartsAndTables(porLogin, porCluster, porHorario, porTecnologia);
-    }
-
-    function updateSummary(porTecnologia, porCluster, porHorario) {
-      // Tecnologia principal
-      let mainTech = Object.entries(porTecnologia).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById('mainTech').textContent = mainTech ? `${mainTech[0]} (${mainTech[1]})` : '-';
-      
-      // Cluster principal
-      let mainCluster = Object.entries(porCluster).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById('mainCluster').textContent = mainCluster ? `${mainCluster[0]} (${mainCluster[1]})` : '-';
-      
-      // Horário pico
-      let peakTime = Object.entries(porHorario).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById('peakTime').textContent = peakTime ? `${peakTime[0]}h (${peakTime[1]})` : '-';
-    }
-
-    function updateBasicChartsAndTables(porLogin, porCluster, porHorario, porTecnologia) {
-      // Atualizar tabelas
-      updateTable('loginTableBody', porLogin, true);
-      updateTable('clusterTableBody', porCluster);
-      updateTable('timeTableBody', porHorario);
-      updateTable('techTableBody', porTecnologia);
-
-      // Cores da Claro Brasil
-      const claroColors = ['#00A1E0', '#FF6D00', '#0033A0', '#00B5AD', '#FFB81C', '#A8A8A8'];
-
-      // Preparar dados para o gráfico de técnicos
-      const loginDataForChart = {};
-      let outrosTecnicos = 0;
-      
-      Object.entries(porLogin).forEach(([login, volume]) => {
-        if (tecnicosEspecificos[login]) {
-          loginDataForChart[login] = volume;
         } else {
-          outrosTecnicos += volume;
+          contagem = 0;
         }
-      });
-      
-      // Adicionar "Outros Técnicos" se houver volume
-      if (outrosTecnicos > 0) {
-        loginDataForChart["OUTROS"] = outrosTecnicos;
-      }
-      
-      // Gráfico por Login (apenas técnicos da lista + "Outros")
-      createChart(
-        'loginChart',
-        'bar',
-        Object.entries(loginDataForChart)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key]) => key === "OUTROS" ? "Outros Técnicos" : (tecnicosEspecificos[key] || key)),
-        Object.entries(loginDataForChart)
-          .sort((a, b) => b[1] - a[1])
-          .map(([, value]) => value),
-        'Volume por Técnico',
-        claroColors
-      );
 
-      // Gráfico por Cluster
-      createChart(
-        'clusterChart',
-        'doughnut',
-        Object.entries(porCluster).sort((a, b) => b[1] - a[1]).map(([key]) => key),
-        Object.entries(porCluster).sort((a, b) => b[1] - a[1]).map(([, value]) => value),
-        'Outages por Cluster',
-        claroColors
-      );
-
-      // Gráfico por Horário
-      createChart(
-        'timeChart',
-        'line',
-        Object.entries(porHorario).sort((a, b) => a[0] - b[0]).map(([key]) => `${key}h`),
-        Object.entries(porHorario).sort((a, b) => a[0] - b[0]).map(([, value]) => value),
-        'Outages por Horário',
-        claroColors.slice().reverse()
-      );
-
-      // Gráfico por Tecnologia
-      createChart(
-        'techChart',
-        'polarArea',
-        Object.entries(porTecnologia).sort((a, b) => b[1] - a[1]).map(([key]) => key),
-        Object.entries(porTecnologia).sort((a, b) => b[1] - a[1]).map(([, value]) => value),
-        'Outages por Tecnologia',
-        claroColors
-      );
-    }
-
-    function updateTable(tableId, data, isLogin = false) {
-      const total = Object.values(data).reduce((sum, value) => sum + value, 0);
-      const tableBody = document.getElementById(tableId);
-      
-      if (total === 0) {
-        tableBody.innerHTML = `<tr><td colspan="3" class="no-data">Nenhum dado disponível para os filtros selecionados</td></tr>`;
-        return;
-      }
-      
-      if (isLogin) {
-        // Processamento especial para a tabela de logins
-        let filteredData = {};
-        let outrosTecnicos = 0;
-        
-        // Separar técnicos da lista e consolidar os demais
-        Object.entries(data).forEach(([login, volume]) => {
-          if (tecnicosEspecificos[login]) {
-            filteredData[login] = volume;
-          } else {
-            outrosTecnicos += volume;
-          }
-        });
-        
-        // Adicionar "Outros Técnicos" se houver volume
-        if (outrosTecnicos > 0) {
-          filteredData["OUTROS"] = outrosTecnicos;
+        if (valor < 0) {
+          celula.classList.add("saldo-negativo");
         }
-        
-        // Ordenar por volume (decrescente)
-        const sortedData = Object.entries(filteredData).sort((a, b) => b[1] - a[1]);
-        
-        // Gerar linhas da tabela
-        tableBody.innerHTML = sortedData.map(([key, value]) => {
-          const nome = key === "OUTROS" ? "Outros Técnicos" : (tecnicosEspecificos[key] || key);
-          const percentage = ((value / total) * 100).toFixed(1);
-          return `
-            <tr>
-              <td>${nome}</td>
-              <td>${value}</td>
-              <td>${percentage}%</td>
-            </tr>
-          `;
-        }).join('');
+      }
+
+      // Atualizar status
+      const statusCell = row.cells[row.cells.length - 1];
+      statusCell.textContent = violou ? "Violação" : "OK";
+      statusCell.className = violou ? "destaque violacao" : "";
+
+      // Destacar linha se violou
+      if (violou) {
+        row.classList.add("violacao");
       } else {
-        // Processamento normal para outras tabelas
-        tableBody.innerHTML = Object.entries(data)
-          .sort((a, b) => b[1] - a[1])
-          .map(([key, value]) => {
-            const nome = key;
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `
-              <tr>
-                <td>${nome}</td>
-                <td>${value}</td>
-                <td>${percentage}%</td>
-              </tr>
-            `;
-          }).join('');
+        row.classList.remove("violacao");
       }
-    }
+    });
+  }
 
-    function createChart(id, type, labels, data, title, colors) {
-      const canvas = document.getElementById(id);
-      const ctx = canvas.getContext('2d');
+  function filtrarTabela() {
+    const filtroNome = document.getElementById("filtroNome").value.toUpperCase();
+    const filtroViolacao = document.getElementById("filtroViolacao").checked;
+    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
+
+    rows.forEach(row => {
+      const nome = row.cells[0].textContent.toUpperCase();
+      const violacao = row.classList.contains("violacao");
       
-      // Destruir gráfico anterior se existir
-      if (ctx.chart) {
-        ctx.chart.destroy();
-      }
+      const mostraNome = nome.includes(filtroNome);
+      const mostraViolacao = !filtroViolacao || violacao;
       
-      // Limpar canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      row.style.display = (mostraNome && mostraViolacao) ? "" : "none";
+    });
+  }
+
+  function exportarDados() {
+    const dadosParaExportar = {
+      meses: meses,
+      funcionarios: dadosIniciais
+    };
+    
+    const blob = new Blob([JSON.stringify(dadosParaExportar, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'banco_de_horas.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importarDados() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = e => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
       
-      // Verificar se há dados para mostrar
-      if (data.length === 0 || data.every(val => val === 0)) {
-        ctx.font = '16px Arial';
-        ctx.fillStyle = '#666';
-        ctx.textAlign = 'center';
-        ctx.fillText('Nenhum dado disponível', canvas.width / 2, canvas.height / 2);
-        return;
-      }
-      
-      ctx.chart = new Chart(ctx, {
-        type: type,
-        data: {
-          labels: labels,
-          datasets: [{
-            label: title,
-            data: data,
-            backgroundColor: colors,
-            borderColor: '#ddd',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'right',
-            },
-            title: {
-              display: true,
-              text: title,
-              font: {
-                size: 14
-              }
-            }
+      reader.onload = event => {
+        try {
+          const dados = JSON.parse(event.target.result);
+          
+          // Atualizar meses
+          meses.length = 1; // Mantém apenas Maio
+          for (let i = 1; i < dados.meses.length; i++) {
+            meses.push(dados.meses[i]);
           }
+          
+          // Atualizar dados dos funcionários
+          dados.funcionarios.forEach((func, index) => {
+            Object.assign(dadosIniciais[index], func);
+          });
+          
+          // Reconstruir tabela
+          inicializarTabela();
+          alert('Dados importados com sucesso!');
+        } catch (error) {
+          alert('Erro ao importar dados: ' + error.message);
         }
-      });
-    }
-  </script>
+      };
+      
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }
+</script>
 </body>
 </html>
