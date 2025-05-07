@@ -40,10 +40,13 @@
       font-weight: bold;
     }
     .excesso {
-      background-color: #ffcccc;
+      background-color: #ff9999; /* Vermelho claro para >10h */
+    }
+    .normal {
+      background-color: #b3e6b3; /* Verde claro para 0-10h */
     }
     .saldo-negativo {
-      background-color: #ff9999;
+      background-color: #ffcccc; /* Rosa claro para negativos */
     }
     .legenda {
       margin: 20px 0;
@@ -106,6 +109,10 @@
     .destaque {
       font-weight: bold;
     }
+    .sem-dados {
+      color: #999;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -118,32 +125,38 @@
       Violação: 3+ meses consecutivos >10h
     </div>
     <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #ffcccc;"></span>
-      Mês com >10h
+      <span class="legenda-cor" style="background-color: #ff9999;"></span>
+      Saldo >10h
     </div>
     <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #ff9999;"></span>
+      <span class="legenda-cor" style="background-color: #b3e6b3;"></span>
+      Saldo entre 0-10h
+    </div>
+    <div class="legenda-item">
+      <span class="legenda-cor" style="background-color: #ffcccc;"></span>
       Saldo negativo
     </div>
   </div>
 
   <div class="controles">
-    <h3>Adicionar Novo Mês</h3>
+    <h3>Adicionar/Editar Dados</h3>
     <div class="form-group">
-      <label for="novoMes">Mês:</label>
-      <select id="novoMes">
-        <option value="1">Junho</option>
-        <option value="2">Julho</option>
-        <option value="3">Agosto</option>
-        <option value="4">Setembro</option>
-        <option value="5">Outubro</option>
-        <option value="6">Novembro</option>
-        <option value="7">Dezembro</option>
+      <label for="selecionarMes">Mês:</label>
+      <select id="selecionarMes">
+        <option value="maio">Maio</option>
+        <option value="junho">Junho</option>
+        <option value="julho">Julho</option>
+        <option value="agosto">Agosto</option>
+        <option value="setembro">Setembro</option>
+        <option value="outubro">Outubro</option>
+        <option value="novembro">Novembro</option>
+        <option value="dezembro">Dezembro</option>
       </select>
     </div>
-    <button onclick="adicionarMes()">Adicionar Mês</button>
+    <button onclick="editarMes()">Editar Mês Selecionado</button>
     <button onclick="exportarDados()">Exportar Dados</button>
     <button onclick="importarDados()">Importar Dados</button>
+    <button onclick="limparDados()" style="background-color: #f44336;">Limpar Todos os Dados</button>
   </div>
 
   <div class="filtros">
@@ -158,8 +171,7 @@
     <thead>
       <tr>
         <th>Analista</th>
-        <th>Maio</th>
-        <!-- Novos meses serão adicionados aqui -->
+        <!-- Meses serão adicionados dinamicamente -->
         <th>Total</th>
         <th>Meses >10h</th>
         <th>Status</th>
@@ -172,51 +184,132 @@
 </div>
 
 <script>
-  // Dados iniciais - Maio
-  const dadosIniciais = [
-    { nome: "LEANDRO GONÇALVES DE CARVALHO", maio: -4.22 },
-    { nome: "BRUNO COSTA BUCARD", maio: 4.59 },
-    { nome: "IGOR MARCELINO DE MARINS", maio: -0.16 },
-    { nome: "GABRIELA TAVARES DA SILVA", maio: -10.34 },
-    { nome: "MAGNO FERRAREZ DE MORAIS", maio: null },
-    { nome: "DANIEL MARCELO FELISBERTO OLIVEIRA", maio: 8.02 },
-    { nome: "FERNANDA MESQUITA DE FREITAS", maio: 2.42 },
-    { nome: "ROBERTO SILVA DO NASCIMENTO", maio: 2.04 },
-    { nome: "RODRIGO PIRES BERNARDINO", maio: 0.04 },
-    { nome: "SUELLEN HERNANDEZ DA SILVA", maio: 10.08 },
-    { nome: "MONICA DA SILVA RODRIGUES", maio: 10.57 },
-    { nome: "MARLEY MARQUES RIBEIRO", maio: 11.51 },
-    { nome: "KELLY PINHEIRO LIRA", maio: 1.56 },
-    { nome: "JENNIFER MARIA ANDRADE SANTOS", maio: null },
-    { nome: "THIAGO PEREIRA DA SILVA", maio: 9.39 },
-    { nome: "LEONARDO FERREIRA LIMA DE ALMEIDA", maio: 9.27 },
-    { nome: "MARISTELLA MARCIA DOS SANTOS", maio: 1.55 },
-    { nome: "SANDRO DA SILVA CARVALHO", maio: -6.49 },
-    { nome: "CRISTIANE HERMOGENES DA SILVA", maio: 9.55 },
-    { nome: "JEFFERSON LUIS GONÇALVES COITINHO", maio: 14.36 },
-    { nome: "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA", maio: -0.59 },
-    { nome: "ELBERTON ANICETO HENRIQUE", maio: 8.35 },
-    { nome: "ALAN MARINHO DIAS", maio: 11.45 },
-    { nome: "JULIO CESAR SANTOS SOARES", maio: 13.12 },
-    { nome: "CARLOS EDUARDO BARRETO DE ABREU", maio: 7.07 },
-    { nome: "ROSANA RIEGER MATOS", maio: 10.50 },
-    { nome: "THIAGO DE SOUZA INACIO", maio: 8.40 }
+  // Estrutura de dados inicial
+  let bancoHoras = {
+    meses: [], // Ordem dos meses adicionados
+    funcionarios: [] // Dados dos funcionários
+  };
+
+  // Nomes dos funcionários
+  const nomesFuncionarios = [
+    "LEANDRO GONÇALVES DE CARVALHO",
+    "BRUNO COSTA BUCARD",
+    "IGOR MARCELINO DE MARINS",
+    "GABRIELA TAVARES DA SILVA",
+    "MAGNO FERRAREZ DE MORAIS",
+    "DANIEL MARCELO FELISBERTO OLIVEIRA",
+    "FERNANDA MESQUITA DE FREITAS",
+    "ROBERTO SILVA DO NASCIMENTO",
+    "RODRIGO PIRES BERNARDINO",
+    "SUELLEN HERNANDEZ DA SILVA",
+    "MONICA DA SILVA RODRIGUES",
+    "MARLEY MARQUES RIBEIRO",
+    "KELLY PINHEIRO LIRA",
+    "JENNIFER MARIA ANDRADE SANTOS",
+    "THIAGO PEREIRA DA SILVA",
+    "LEONARDO FERREIRA LIMA DE ALMEIDA",
+    "MARISTELLA MARCIA DOS SANTOS",
+    "SANDRO DA SILVA CARVALHO",
+    "CRISTIANE HERMOGENES DA SILVA",
+    "JEFFERSON LUIS GONÇALVES COITINHO",
+    "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA",
+    "ELBERTON ANICETO HENRIQUE",
+    "ALAN MARINHO DIAS",
+    "JULIO CESAR SANTOS SOARES",
+    "CARLOS EDUARDO BARRETO DE ABREU",
+    "ROSANA RIEGER MATOS",
+    "THIAGO DE SOUZA INACIO"
   ];
 
-  const meses = [
-    { nome: "Maio", id: "maio" },
-    // Outros meses serão adicionados dinamicamente
-  ];
+  // Dados iniciais de Maio
+  const dadosIniciaisMaio = {
+    "LEANDRO GONÇALVES DE CARVALHO": -4.22,
+    "BRUNO COSTA BUCARD": 4.59,
+    "IGOR MARCELINO DE MARINS": -0.16,
+    "GABRIELA TAVARES DA SILVA": -10.34,
+    "MAGNO FERRAREZ DE MORAIS": null,
+    "DANIEL MARCELO FELISBERTO OLIVEIRA": 8.02,
+    "FERNANDA MESQUITA DE FREITAS": 2.42,
+    "ROBERTO SILVA DO NASCIMENTO": 2.04,
+    "RODRIGO PIRES BERNARDINO": 0.04,
+    "SUELLEN HERNANDEZ DA SILVA": 10.08,
+    "MONICA DA SILVA RODRIGUES": 10.57,
+    "MARLEY MARQUES RIBEIRO": 11.51,
+    "KELLY PINHEIRO LIRA": 1.56,
+    "JENNIFER MARIA ANDRADE SANTOS": null,
+    "THIAGO PEREIRA DA SILVA": 9.39,
+    "LEONARDO FERREIRA LIMA DE ALMEIDA": 9.27,
+    "MARISTELLA MARCIA DOS SANTOS": 1.55,
+    "SANDRO DA SILVA CARVALHO": -6.49,
+    "CRISTIANE HERMOGENES DA SILVA": 9.55,
+    "JEFFERSON LUIS GONÇALVES COITINHO": 14.36,
+    "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA": -0.59,
+    "ELBERTON ANICETO HENRIQUE": 8.35,
+    "ALAN MARINHO DIAS": 11.45,
+    "JULIO CESAR SANTOS SOARES": 13.12,
+    "CARLOS EDUARDO BARRETO DE ABREU": 7.07,
+    "ROSANA RIEGER MATOS": 10.50,
+    "THIAGO DE SOUZA INACIO": 8.40
+  };
 
+  // Nomes dos meses para exibição
+  const mesesNomes = {
+    "maio": "Maio",
+    "junho": "Junho",
+    "julho": "Julho",
+    "agosto": "Agosto",
+    "setembro": "Setembro",
+    "outubro": "Outubro",
+    "novembro": "Novembro",
+    "dezembro": "Dezembro"
+  };
+
+  // Carregar dados salvos ao iniciar
   document.addEventListener('DOMContentLoaded', function() {
+    carregarDados();
     inicializarTabela();
   });
 
+  // Carrega dados do localStorage ou inicializa com Maio
+  function carregarDados() {
+    const dadosSalvos = localStorage.getItem('bancoHoras');
+    if (dadosSalvos) {
+      bancoHoras = JSON.parse(dadosSalvos);
+    } else {
+      // Inicializar com dados de Maio
+      bancoHoras.meses = ["maio"];
+      bancoHoras.funcionarios = nomesFuncionarios.map(nome => {
+        return {
+          nome: nome,
+          maio: dadosIniciaisMaio[nome]
+        };
+      });
+      salvarDados();
+    }
+  }
+
+  // Salva dados no localStorage
+  function salvarDados() {
+    localStorage.setItem('bancoHoras', JSON.stringify(bancoHoras));
+  }
+
+  // Inicializa a tabela com os dados atuais
   function inicializarTabela() {
     const tbody = document.querySelector("#tabelaHoras tbody");
     tbody.innerHTML = "";
 
-    dadosIniciais.forEach(funcionario => {
+    // Configurar cabeçalho com meses
+    const thead = document.querySelector("#tabelaHoras thead tr");
+    thead.innerHTML = "<th>Analista</th>";
+    
+    bancoHoras.meses.forEach(mesId => {
+      thead.innerHTML += `<th>${mesesNomes[mesId]}</th>`;
+    });
+    
+    thead.innerHTML += "<th>Total</th><th>Meses >10h</th><th>Status</th>";
+
+    // Adicionar linhas para cada funcionário
+    bancoHoras.funcionarios.forEach(funcionario => {
       const row = document.createElement("tr");
       
       // Nome do funcionário
@@ -225,19 +318,16 @@
       row.appendChild(nomeCell);
 
       // Células para cada mês
-      meses.forEach(mes => {
+      bancoHoras.meses.forEach(mesId => {
         const cell = document.createElement("td");
-        const valor = funcionario[mes.id];
-        cell.textContent = valor !== null ? valor.toFixed(2) : "";
+        const valor = funcionario[mesId];
         
-        // Destacar valores > 10
-        if (valor > 10) {
-          cell.classList.add("excesso");
-        }
-        
-        // Destacar valores negativos
-        if (valor < 0) {
-          cell.classList.add("saldo-negativo");
+        if (valor !== null && valor !== undefined) {
+          cell.textContent = valor.toFixed(2);
+          aplicarEstiloCelula(cell, valor);
+        } else {
+          cell.textContent = "";
+          cell.classList.add("sem-dados");
         }
         
         row.appendChild(cell);
@@ -263,56 +353,126 @@
     verificarViolacoes();
   }
 
-  function adicionarMes() {
-    const select = document.getElementById("novoMes");
-    const mesIndex = parseInt(select.value);
-    const mesesNomes = ["Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  // Aplica o estilo correto para cada célula baseado no valor
+  function aplicarEstiloCelula(cell, valor) {
+    // Limpar classes anteriores
+    cell.className = '';
     
-    if (meses.length >= 8) {
-      alert("Todos os meses já foram adicionados!");
+    if (valor === null || valor === undefined) {
+      cell.classList.add("sem-dados");
       return;
     }
-
-    const novoMes = {
-      nome: mesesNomes[mesIndex],
-      id: mesesNomes[mesIndex].toLowerCase()
-    };
-
-    meses.push(novoMes);
-
-    // Adicionar coluna no cabeçalho
-    const thead = document.querySelector("#tabelaHoras thead tr");
-    const th = document.createElement("th");
-    th.textContent = novoMes.nome;
-    thead.insertBefore(th, thead.querySelector(".total"));
-
-    // Adicionar células para cada funcionário
-    const tbody = document.querySelector("#tabelaHoras tbody");
-    const rows = tbody.querySelectorAll("tr");
-
-    rows.forEach((row, index) => {
-      const cell = document.createElement("td");
-      cell.textContent = ""; // Valor vazio inicialmente
-      cell.contentEditable = "true";
-      cell.addEventListener("blur", function() {
-        const valor = parseFloat(this.textContent) || null;
-        dadosIniciais[index][novoMes.id] = valor;
-        atualizarTotais();
-        verificarViolacoes();
-      });
-      row.insertBefore(cell, row.querySelector(".total"));
-    });
-
-    // Atualizar o select para o próximo mês
-    if (mesIndex < 6) {
-      select.value = mesIndex + 1;
+    
+    if (valor > 10) {
+      cell.classList.add("excesso");
+    } else if (valor >= 0) {
+      cell.classList.add("normal");
     } else {
-      select.disabled = true;
+      cell.classList.add("saldo-negativo");
     }
-
-    alert(`Mês ${novoMes.nome} adicionado com sucesso! Preencha os valores para cada funcionário.`);
   }
 
+  // Abre modal para editar um mês específico
+  function editarMes() {
+    const mesId = document.getElementById("selecionarMes").value;
+    const mesNome = mesesNomes[mesId];
+    
+    // Verificar se o mês já existe, se não, adicionar
+    if (!bancoHoras.meses.includes(mesId)) {
+      bancoHoras.meses.push(mesId);
+      
+      // Adicionar propriedade do mês para cada funcionário
+      bancoHoras.funcionarios.forEach(func => {
+        func[mesId] = null;
+      });
+      
+      salvarDados();
+    }
+    
+    // Criar modal de edição
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.backgroundColor = "rgba(0,0,0,0.7)";
+    modal.style.display = "flex";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+    modal.style.zIndex = "1000";
+    
+    const modalContent = document.createElement("div");
+    modalContent.style.backgroundColor = "white";
+    modalContent.style.padding = "20px";
+    modalContent.style.borderRadius = "5px";
+    modalContent.style.width = "80%";
+    modalContent.style.maxHeight = "80vh";
+    modalContent.style.overflowY = "auto";
+    
+    modalContent.innerHTML = `
+      <h2>Editar ${mesNome}</h2>
+      <table style="width: 100%; margin-top: 20px;">
+        <thead>
+          <tr>
+            <th>Analista</th>
+            <th>Horas</th>
+          </tr>
+        </thead>
+        <tbody id="modalBody">
+        </tbody>
+      </table>
+      <div style="margin-top: 20px; text-align: right;">
+        <button id="salvarModal" style="background-color: #4CAF50;">Salvar</button>
+        <button id="cancelarModal" style="background-color: #f44336;">Cancelar</button>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Preencher tabela no modal
+    const modalBody = document.getElementById("modalBody");
+    bancoHoras.funcionarios.forEach(funcionario => {
+      const row = document.createElement("tr");
+      
+      const nomeCell = document.createElement("td");
+      nomeCell.textContent = funcionario.nome;
+      row.appendChild(nomeCell);
+      
+      const horasCell = document.createElement("td");
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = "0.01";
+      input.value = funcionario[mesId] !== null && funcionario[mesId] !== undefined ? funcionario[mesId] : "";
+      input.style.width = "80px";
+      input.style.padding = "5px";
+      horasCell.appendChild(input);
+      row.appendChild(horasCell);
+      
+      modalBody.appendChild(row);
+    });
+    
+    // Evento para salvar
+    document.getElementById("salvarModal").addEventListener("click", function() {
+      const inputs = modalBody.querySelectorAll("input");
+      inputs.forEach((input, index) => {
+        const valor = input.value.trim() === "" ? null : parseFloat(input.value);
+        bancoHoras.funcionarios[index][mesId] = valor;
+      });
+      
+      salvarDados();
+      document.body.removeChild(modal);
+      inicializarTabela();
+    });
+    
+    // Evento para cancelar
+    document.getElementById("cancelarModal").addEventListener("click", function() {
+      document.body.removeChild(modal);
+    });
+  }
+
+  // Atualiza totais e contagem de meses com excesso
   function atualizarTotais() {
     const rows = document.querySelectorAll("#tabelaHoras tbody tr");
 
@@ -336,6 +496,7 @@
     });
   }
 
+  // Verifica violações (3+ meses consecutivos >10h)
   function verificarViolacoes() {
     const rows = document.querySelectorAll("#tabelaHoras tbody tr");
 
@@ -348,12 +509,7 @@
         const celula = row.cells[i];
         const valor = parseFloat(celula.textContent) || 0;
 
-        // Resetar classes de cor
-        celula.classList.remove("excesso", "saldo-negativo");
-
-        // Aplicar classes conforme necessário
         if (valor > 10) {
-          celula.classList.add("excesso");
           contagem++;
           
           if (contagem >= 3) {
@@ -361,10 +517,6 @@
           }
         } else {
           contagem = 0;
-        }
-
-        if (valor < 0) {
-          celula.classList.add("saldo-negativo");
         }
       }
 
@@ -382,6 +534,7 @@
     });
   }
 
+  // Filtra a tabela por nome e/ou violações
   function filtrarTabela() {
     const filtroNome = document.getElementById("filtroNome").value.toUpperCase();
     const filtroViolacao = document.getElementById("filtroViolacao").checked;
@@ -398,11 +551,9 @@
     });
   }
 
+  // Exporta dados para JSON
   function exportarDados() {
-    const dadosParaExportar = {
-      meses: meses,
-      funcionarios: dadosIniciais
-    };
+    const dadosParaExportar = bancoHoras;
     
     const blob = new Blob([JSON.stringify(dadosParaExportar, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -416,6 +567,7 @@
     URL.revokeObjectURL(url);
   }
 
+  // Importa dados de JSON
   function importarDados() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -428,19 +580,8 @@
       reader.onload = event => {
         try {
           const dados = JSON.parse(event.target.result);
-          
-          // Atualizar meses
-          meses.length = 1; // Mantém apenas Maio
-          for (let i = 1; i < dados.meses.length; i++) {
-            meses.push(dados.meses[i]);
-          }
-          
-          // Atualizar dados dos funcionários
-          dados.funcionarios.forEach((func, index) => {
-            Object.assign(dadosIniciais[index], func);
-          });
-          
-          // Reconstruir tabela
+          bancoHoras = dados;
+          salvarDados();
           inicializarTabela();
           alert('Dados importados com sucesso!');
         } catch (error) {
@@ -452,6 +593,14 @@
     };
     
     input.click();
+  }
+
+  // Limpa todos os dados
+  function limparDados() {
+    if (confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita.')) {
+      localStorage.removeItem('bancoHoras');
+      location.reload();
+    }
   }
 </script>
 </body>
