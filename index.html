@@ -7,6 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     :root {
       --primary-color: #2c3e50;
@@ -15,6 +16,7 @@
       --light-color: #ecf0f1;
       --dark-color: #34495e;
       --success-color: #27ae60;
+      --warning-color: #f39c12;
       --text-color: #333;
       --text-light: #7f8c8d;
     }
@@ -68,12 +70,23 @@
       font-size: 28px;
     }
     
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
     .card {
       background: white;
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
       padding: 20px;
       margin-bottom: 20px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
     
     .card-title {
@@ -132,6 +145,9 @@
       cursor: pointer;
       font-weight: 500;
       transition: background-color 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .btn:hover {
@@ -305,6 +321,49 @@
       margin-bottom: 20px;
     }
     
+    .alert {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 4px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-width: 300px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1100;
+      transform: translateX(0);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .alert-success {
+      background-color: var(--success-color);
+    }
+    
+    .alert-warning {
+      background-color: var(--warning-color);
+    }
+    
+    .alert-error {
+      background-color: var(--accent-color);
+    }
+    
+    .alert.fade-out {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      margin-left: 15px;
+    }
+    
     @media (max-width: 768px) {
       .chart-container {
         grid-template-columns: 1fr;
@@ -319,6 +378,20 @@
       .filters-container {
         flex-direction: column;
       }
+      
+      .file-input-container {
+        flex-direction: column;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      .chart-container, .tables-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .summary-cards {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
@@ -326,10 +399,13 @@
   <header>
     <div class="container header-content">
       <div class="logo">
-        <h1><i>📊</i> Dashboard de Análise de Volumetria</h1>
+        <i class="fas fa-chart-bar"></i>
+        <h1>Dashboard de Análise de Volumetria</h1>
       </div>
-      <div class="data-info" id="dataInfo">
-        Nenhum arquivo carregado
+      <div class="header-actions">
+        <button id="exportBtn" class="btn btn-secondary">
+          <i class="fas fa-download"></i> Exportar
+        </button>
       </div>
     </div>
   </header>
@@ -339,10 +415,14 @@
       <div class="card-title">Carregar Dados</div>
       <div class="file-input-container">
         <div class="file-input-wrapper">
-          <label for="fileInput" class="file-input-label">Selecionar Arquivos Excel</label>
+          <label for="fileInput" class="file-input-label">
+            <i class="fas fa-file-excel"></i> Selecionar Arquivos Excel
+          </label>
           <input type="file" id="fileInput" multiple accept=".xlsx, .xls">
         </div>
-        <button class="btn" onclick="loadFiles()">Processar Dados</button>
+        <button class="btn" onclick="loadFiles()">
+          <i class="fas fa-cogs"></i> Processar Dados
+        </button>
       </div>
     </div>
     
@@ -356,19 +436,19 @@
         <div class="card-title">Filtros de Análise</div>
         <div class="filters-container">
           <div class="filter-group">
-            <label for="monthFilter">Mês</label>
+            <label for="monthFilter"><i class="fas fa-calendar-alt"></i> Mês</label>
             <select id="monthFilter" onchange="applyFilters()">
               <option value="">Todos os meses</option>
             </select>
           </div>
           <div class="filter-group">
-            <label for="clusterFilter">Cluster</label>
+            <label for="clusterFilter"><i class="fas fa-layer-group"></i> Cluster</label>
             <select id="clusterFilter" onchange="applyFilters()">
               <option value="">Todos os clusters</option>
             </select>
           </div>
           <div class="filter-group">
-            <label for="tipoFilter">Tipo</label>
+            <label for="tipoFilter"><i class="fas fa-tag"></i> Tipo</label>
             <select id="tipoFilter" onchange="applyFilters()">
               <option value="">Todos os tipos</option>
             </select>
@@ -376,32 +456,36 @@
         </div>
         
         <div class="view-options">
-          <button class="view-btn active" onclick="changeView('unified')">Visão Unificada</button>
-          <button class="view-btn" onclick="changeView('monthly')">Visão por Mês</button>
+          <button class="view-btn active" onclick="changeView('unified')">
+            <i class="fas fa-globe"></i> Visão Unificada
+          </button>
+          <button class="view-btn" onclick="changeView('monthly')">
+            <i class="fas fa-calendar"></i> Visão por Mês
+          </button>
         </div>
       </div>
       
       <div class="summary-cards">
         <div class="summary-card">
-          <h3>Total de Registros</h3>
+          <h3><i class="fas fa-database"></i> Total de Registros</h3>
           <div class="value" id="totalRecords">0</div>
         </div>
         <div class="summary-card">
-          <h3>Período Inicial</h3>
+          <h3><i class="fas fa-calendar-start"></i> Período Inicial</h3>
           <div class="value" id="startDate">-</div>
         </div>
         <div class="summary-card">
-          <h3>Período Final</h3>
+          <h3><i class="fas fa-calendar-end"></i> Período Final</h3>
           <div class="value" id="endDate">-</div>
         </div>
         <div class="summary-card">
-          <h3>Meses Analisados</h3>
+          <h3><i class="fas fa-calendar-alt"></i> Meses Analisados</h3>
           <div class="value" id="monthsCount">0</div>
         </div>
       </div>
       
       <div class="card">
-        <div class="card-title">Distribuição por Hora do Dia</div>
+        <div class="card-title"><i class="fas fa-clock"></i> Distribuição por Hora do Dia</div>
         <div class="chart-container">
           <div class="chart-wrapper">
             <canvas id="horaChart"></canvas>
@@ -413,7 +497,7 @@
       </div>
       
       <div class="card">
-        <div class="card-title">Distribuição por Dia da Semana</div>
+        <div class="card-title"><i class="fas fa-calendar-week"></i> Distribuição por Dia da Semana</div>
         <div class="chart-container">
           <div class="chart-wrapper">
             <canvas id="diaSemanaChart"></canvas>
@@ -425,7 +509,7 @@
       </div>
       
       <div class="card">
-        <div class="card-title">Análise por Categoria</div>
+        <div class="card-title"><i class="fas fa-chart-pie"></i> Análise por Categoria</div>
         <div class="chart-container">
           <div class="chart-wrapper">
             <canvas id="clusterChart"></canvas>
@@ -440,14 +524,14 @@
       </div>
       
       <div class="card">
-        <div class="card-title">Tabelas Detalhadas</div>
+        <div class="card-title"><i class="fas fa-table"></i> Tabelas Detalhadas</div>
         <div id="output" class="tables-container"></div>
       </div>
     </div>
   </div>
 
   <script>
-    let originalData = [];
+    // Continua na Parte 2...    let originalData = [];
     let charts = {};
     let currentView = 'unified';
     const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -457,9 +541,32 @@
       document.getElementById('loading').style.display = show ? 'flex' : 'none';
     }
 
+    function showAlert(message, type) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.innerHTML = `
+        <span>${message}</span>
+        <button class="close-btn">&times;</button>
+      `;
+      
+      document.body.appendChild(alertDiv);
+      
+      setTimeout(() => {
+        alertDiv.classList.add('fade-out');
+        setTimeout(() => alertDiv.remove(), 500);
+      }, 5000);
+      
+      alertDiv.querySelector('.close-btn').addEventListener('click', () => {
+        alertDiv.remove();
+      });
+    }
+
     function loadFiles() {
       const files = document.getElementById('fileInput').files;
-      if (!files.length) return alert('Por favor, selecione pelo menos um arquivo Excel');
+      if (!files.length) {
+        showAlert('Por favor, selecione pelo menos um arquivo Excel', 'warning');
+        return;
+      }
       
       showLoading(true);
       
@@ -469,22 +576,31 @@
           reader.onload = e => {
             try {
               const data = new Uint8Array(e.target.result);
-              const workbook = XLSX.read(data, { type: 'array' });
+              const workbook = XLSX.read(data, { type: 'array', cellDates: true });
               const sheet = workbook.Sheets[workbook.SheetNames[0]];
-              const json = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+              const json = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false, dateNF: 'dd/mm/yyyy hh:mm' });
               
-              // Processar datas no formato dd/mm/aaaa hh:mm
               const processedData = json.map(row => {
                 if (row["DIA/HORA"]) {
-                  const [datePart, timePart] = row["DIA/HORA"].split(' ');
-                  const [day, month, year] = datePart.split('/');
-                  const [hours, minutes] = timePart ? timePart.split(':') : ['00', '00'];
+                  let date;
+                  if (row["DIA/HORA"] instanceof Date) {
+                    date = row["DIA/HORA"];
+                  } else {
+                    const dateStr = row["DIA/HORA"].toString().trim();
+                    const brMatch = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/);
+                    if (brMatch) {
+                      date = new Date(brMatch[3], brMatch[2]-1, brMatch[1], brMatch[4], brMatch[5]);
+                    } else {
+                      date = new Date(dateStr);
+                    }
+                  }
                   
-                  // Criar objeto Date (mês é 0-indexed)
-                  row._date = new Date(year, month-1, day, hours || 0, minutes || 0);
+                  if (!isNaN(date.getTime())) {
+                    row._date = date;
+                  }
                 }
                 return row;
-              });
+              }).filter(row => row._date);
               
               resolve(processedData);
             } catch (error) {
@@ -498,10 +614,10 @@
 
       Promise.all(promises)
         .then(results => {
-          originalData = [].concat(...results).filter(row => row._date);
+          originalData = [].concat(...results);
           
           if (originalData.length === 0) {
-            alert('Nenhum dado válido encontrado nos arquivos selecionados');
+            showAlert('Nenhum dado válido encontrado nos arquivos selecionados', 'warning');
             showLoading(false);
             return;
           }
@@ -511,9 +627,10 @@
           applyFilters();
           document.getElementById('analysisSection').style.display = 'block';
           showLoading(false);
+          showAlert('Dados carregados com sucesso!', 'success');
         })
         .catch(error => {
-          alert(error);
+          showAlert(error, 'error');
           console.error(error);
           showLoading(false);
         });
@@ -532,7 +649,6 @@
       document.getElementById('startDate').textContent = formatDate(minDate, true);
       document.getElementById('endDate').textContent = formatDate(maxDate, true);
       
-      // Contar meses distintos
       const months = new Set();
       originalData.forEach(row => {
         const date = row._date;
@@ -590,7 +706,6 @@
     function changeView(view) {
       currentView = view;
       
-      // Atualizar botões
       document.querySelectorAll('.view-btn').forEach(btn => {
         btn.classList.toggle('active', btn.textContent.includes(view === 'unified' ? 'Unificada' : 'Mês'));
       });
@@ -598,34 +713,28 @@
       applyFilters();
     }
 
-    function applyFilters() {
+    function getFilteredData() {
       const selectedMonth = document.getElementById('monthFilter').value;
       const selectedCluster = document.getElementById('clusterFilter').value;
       const selectedTipo = document.getElementById('tipoFilter').value;
 
-      let filtered = originalData;
-      
-      if (currentView === 'monthly' && selectedMonth) {
-        filtered = filtered.filter(row => {
-          const date = row._date;
-          const month = `${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
-          return month === selectedMonth;
-        });
-      } else {
-        filtered = filtered.filter(row => {
-          const date = row._date;
-          const month = `${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
-          const cluster = row["CLUSTER"] || "";
-          const tipo = row["TIPO"] || "";
-          
-          return (!selectedMonth || month === selectedMonth) &&
-                 (!selectedCluster || cluster === selectedCluster) &&
-                 (!selectedTipo || tipo === selectedTipo);
-        });
-      }
+      return originalData.filter(row => {
+        const date = row._date;
+        const month = `${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
+        const cluster = row["CLUSTER"] || "";
+        const tipo = row["TIPO"] || "";
+        
+        return (!selectedMonth || month === selectedMonth) &&
+               (!selectedCluster || cluster === selectedCluster) &&
+               (!selectedTipo || tipo === selectedTipo);
+      });
+    }
+
+    function applyFilters() {
+      const filtered = getFilteredData();
 
       if (filtered.length === 0) {
-        alert('Nenhum dado encontrado com os filtros selecionados');
+        showAlert('Nenhum dado encontrado com os filtros selecionados', 'warning');
         return;
       }
 
@@ -636,7 +745,6 @@
       clearCharts();
       document.getElementById("output").innerHTML = "";
 
-      // Objetos para contagem
       const counts = {
         cluster: {},
         tipo: {},
@@ -650,16 +758,14 @@
         try {
           const date = row._date;
           
-          // Contagens básicas
           if (row["CLUSTER"]) counts.cluster[row["CLUSTER"]] = (counts.cluster[row["CLUSTER"]] || 0) + 1;
           if (row["TIPO"]) counts.tipo[row["TIPO"]] = (counts.tipo[row["TIPO"]] || 0) + 1;
           if (row["TIPO_RAL"]) counts.tipoRal[row["TIPO_RAL"]] = (counts.tipoRal[row["TIPO_RAL"]] || 0) + 1;
           
-          // Contagens temporais
           if (!isNaN(date)) {
             const hour = date.getHours();
             const dayOfWeek = date.getDay();
-            const dayOfMonth = date.getDate() - 1; // 0-indexed
+            const dayOfMonth = date.getDate() - 1;
             
             counts.hora[hour]++;
             counts.diaSemana[dayOfWeek]++;
@@ -670,7 +776,6 @@
         }
       });
 
-      // Exibir tabelas
       displayTable("Volume por Cluster", counts.cluster);
       displayTable("Volume por Tipo", counts.tipo);
       displayTable("Volume por Tipo de RAL", counts.tipoRal);
@@ -678,7 +783,6 @@
       displayTable("Distribuição por Dia da Semana", Object.fromEntries(counts.diaSemana.map((v, i) => [diasSemana[i], v])));
       displayTable("Distribuição por Dia do Mês", Object.fromEntries(counts.diaMes.map((v, i) => [i + 1, v])));
 
-      // Criar gráficos
       createChart("clusterChart", "Volume por Cluster", counts.cluster, 'bar');
       createChart("tipoChart", "Volume por Tipo", counts.tipo, 'pie');
       createChart("tipoRalChart", "Volume por Tipo de RAL", counts.tipoRal, 'doughnut');
@@ -686,7 +790,6 @@
       createChart("diaSemanaChart", "Volume por Dia da Semana", Object.fromEntries(counts.diaSemana.map((v, i) => [diasSemana[i], v])), 'bar');
       createChart("diaMesChart", "Volume por Dia do Mês", Object.fromEntries(counts.diaMes.map((v, i) => [(i + 1).toString(), v])), 'bar');
       
-      // Criar heatmap de horas
       createHourHeatmap(counts.hora);
     }
 
@@ -741,7 +844,6 @@
       let labels = Object.keys(dataObj);
       let data = Object.values(dataObj);
       
-      // Ordenar dados para gráficos de barras (exceto para horas e dias)
       if (type === 'bar' && !canvasId.includes('hora') && !canvasId.includes('dia')) {
         const combined = labels.map((label, i) => ({label, value: data[i]}));
         combined.sort((a, b) => b.value - a.value);
@@ -749,7 +851,6 @@
         data = combined.map(item => item.value);
       }
       
-      // Destruir gráfico anterior se existir
       if (charts[canvasId]) {
         charts[canvasId].destroy();
       }
@@ -821,16 +922,14 @@
 
     function getChartColors(count, type) {
       if (type === 'bar') {
-        // Gradiente de cores para barras
         const colors = [];
         for (let i = 0; i < count; i++) {
-          const hue = 200 + (i * 30) % 160; // Variação de azul para verde
+          const hue = 200 + (i * 30) % 160;
           colors.push(`hsl(${hue}, 70%, 50%)`);
         }
         return colors;
       }
       
-      // Cores pré-definidas para gráficos de pizza/rosquinha
       const baseColors = [
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
         '#9966FF', '#FF9F40', '#8AC24A', '#607D8B',
@@ -848,12 +947,10 @@
     function createHourHeatmap(hourData) {
       const ctx = document.getElementById('horaHeatmap').getContext('2d');
       
-      // Destruir gráfico anterior se existir
       if (charts['horaHeatmap']) {
         charts['horaHeatmap'].destroy();
       }
       
-      // Preparar dados para heatmap
       const maxValue = Math.max(...hourData);
       const data = {
         labels: ['00h', '', '', '', '04h', '', '', '', '08h', '', '', '', '12h', '', '', '', '16h', '', '', '', '20h', '', '', ''],
@@ -916,6 +1013,23 @@
       Object.values(charts).forEach(chart => chart.destroy());
       charts = {};
     }
+
+    function exportData() {
+      if (!originalData.length) {
+        showAlert('Nenhum dado disponível para exportação', 'warning');
+        return;
+      }
+
+      const filteredData = getFilteredData();
+      const ws = XLSX.utils.json_to_sheet(filteredData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DadosFiltrados");
+      
+      const date = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `volumetria_${date}.xlsx`);
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', exportData);
   </script>
 </body>
 </html>
