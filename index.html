@@ -2,606 +2,213 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Banco de Horas - Controle Mensal</title>
+  <title>Análise com Filtros</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      line-height: 1.6;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h2 {
-      color: #2c3e50;
-      border-bottom: 2px solid #f2c9a0;
-      padding-bottom: 10px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #f2c9a0;
-      position: sticky;
-      top: 0;
-    }
-    .violacao {
-      background-color: #ff6666;
-      color: white;
-      font-weight: bold;
-    }
-    .excesso {
-      background-color: #ff9999; /* Vermelho claro para >10h */
-    }
-    .normal {
-      background-color: #b3e6b3; /* Verde claro para 0-10h */
-    }
-    .saldo-negativo {
-      background-color: #ffcccc; /* Rosa claro para negativos */
-    }
-    .legenda {
-      margin: 20px 0;
-      padding: 15px;
-      background-color: #f5f5f5;
-      border-radius: 5px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-    .legenda-item {
-      display: flex;
-      align-items: center;
-    }
-    .legenda-cor {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      border: 1px solid #ddd;
-    }
-    .total {
-      font-weight: bold;
-      background-color: #e6e6e6;
-    }
-    .controles {
-      margin: 20px 0;
-      padding: 15px;
-      background-color: #f0f8ff;
-      border-radius: 5px;
-    }
-    .form-group {
-      margin-bottom: 10px;
-    }
-    label {
-      display: inline-block;
-      width: 150px;
-      font-weight: bold;
-    }
-    input, select {
-      padding: 6px;
-      border-radius: 4px;
-      border: 1px solid #ddd;
-    }
-    button {
-      padding: 8px 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .filtros {
-      margin-bottom: 15px;
-    }
-    .destaque {
-      font-weight: bold;
-    }
-    .sem-dados {
-      color: #999;
-      font-style: italic;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; }
+    canvas { max-width: 800px; margin: 30px 0; }
+    label, select { margin-right: 15px; }
   </style>
 </head>
 <body>
-<div class="container">
-  <h2>Banco de Horas - Controle Mensal</h2>
+  <h1>📊 Análise de Volume com Filtros</h1>
+  <input type="file" id="fileInput" multiple accept=".xlsx, .xls">
+  <button onclick="loadFiles()">Carregar Arquivos</button>
 
-  <div class="legenda">
-    <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #ff6666;"></span>
-      Violação: 3+ meses consecutivos >10h
-    </div>
-    <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #ff9999;"></span>
-      Saldo >10h
-    </div>
-    <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #b3e6b3;"></span>
-      Saldo entre 0-10h
-    </div>
-    <div class="legenda-item">
-      <span class="legenda-cor" style="background-color: #ffcccc;"></span>
-      Saldo negativo
-    </div>
+  <div style="margin-top:20px;">
+    <label for="monthFilter">Filtrar por mês:</label>
+    <select id="monthFilter" onchange="applyFilters()">
+      <option value="">Todos</option>
+    </select>
+
+    <label for="clusterFilter">Filtrar por cluster:</label>
+    <select id="clusterFilter" onchange="applyFilters()">
+      <option value="">Todos</option>
+    </select>
   </div>
 
-  <div class="controles">
-    <h3>Adicionar/Editar Dados</h3>
-    <div class="form-group">
-      <label for="selecionarMes">Mês:</label>
-      <select id="selecionarMes">
-        <option value="maio">Maio</option>
-        <option value="junho">Junho</option>
-        <option value="julho">Julho</option>
-        <option value="agosto">Agosto</option>
-        <option value="setembro">Setembro</option>
-        <option value="outubro">Outubro</option>
-        <option value="novembro">Novembro</option>
-        <option value="dezembro">Dezembro</option>
-      </select>
-    </div>
-    <button onclick="editarMes()">Editar Mês Selecionado</button>
-    <button onclick="exportarDados()">Exportar Dados</button>
-    <button onclick="importarDados()">Importar Dados</button>
-    <button onclick="limparDados()" style="background-color: #f44336;">Limpar Todos os Dados</button>
-  </div>
+  <div id="output"></div>
 
-  <div class="filtros">
-    <label for="filtroNome">Filtrar por nome:</label>
-    <input type="text" id="filtroNome" onkeyup="filtrarTabela()" placeholder="Digite o nome...">
-    <label for="filtroViolacao" style="margin-left: 20px;">
-      <input type="checkbox" id="filtroViolacao" onchange="filtrarTabela()"> Mostrar apenas violações
-    </label>
-  </div>
+  <canvas id="clusterChart"></canvas>
+  <canvas id="tipoChart"></canvas>
+  <canvas id="tipoRalChart"></canvas>
+  <canvas id="horaChart"></canvas>
 
-  <table id="tabelaHoras">
-    <thead>
-      <tr>
-        <th>Analista</th>
-        <!-- Meses serão adicionados dinamicamente -->
-        <th>Total</th>
-        <th>Meses >10h</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Dados serão inseridos via JavaScript -->
-    </tbody>
-  </table>
-</div>
+  <script>
+    let originalData = [];
 
-<script>
-  // Estrutura de dados inicial
-  let bancoHoras = {
-    meses: [], // Ordem dos meses adicionados
-    funcionarios: [] // Dados dos funcionários
-  };
+    function loadFiles() {
+      const files = document.getElementById('fileInput').files;
+      if (!files.length) return alert('Selecione os arquivos Excel');
 
-  // Nomes dos funcionários
-  const nomesFuncionarios = [
-    "LEANDRO GONÇALVES DE CARVALHO",
-    "BRUNO COSTA BUCARD",
-    "IGOR MARCELINO DE MARINS",
-    "GABRIELA TAVARES DA SILVA",
-    "MAGNO FERRAREZ DE MORAIS",
-    "DANIEL MARCELO FELISBERTO OLIVEIRA",
-    "FERNANDA MESQUITA DE FREITAS",
-    "ROBERTO SILVA DO NASCIMENTO",
-    "RODRIGO PIRES BERNARDINO",
-    "SUELLEN HERNANDEZ DA SILVA",
-    "MONICA DA SILVA RODRIGUES",
-    "MARLEY MARQUES RIBEIRO",
-    "KELLY PINHEIRO LIRA",
-    "JENNIFER MARIA ANDRADE SANTOS",
-    "THIAGO PEREIRA DA SILVA",
-    "LEONARDO FERREIRA LIMA DE ALMEIDA",
-    "MARISTELLA MARCIA DOS SANTOS",
-    "SANDRO DA SILVA CARVALHO",
-    "CRISTIANE HERMOGENES DA SILVA",
-    "JEFFERSON LUIS GONÇALVES COITINHO",
-    "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA",
-    "ELBERTON ANICETO HENRIQUE",
-    "ALAN MARINHO DIAS",
-    "JULIO CESAR SANTOS SOARES",
-    "CARLOS EDUARDO BARRETO DE ABREU",
-    "ROSANA RIEGER MATOS",
-    "THIAGO DE SOUZA INACIO"
-  ];
-
-  // Dados iniciais de Maio (corrigidos)
-  const dadosIniciaisMaio = {
-    "LEANDRO GONÇALVES DE CARVALHO": -4.22,
-    "BRUNO COSTA BUCARD": 4.59,
-    "IGOR MARCELINO DE MARINS": -0.16,
-    "GABRIELA TAVARES DA SILVA": -10.34,
-    "MAGNO FERRAREZ DE MORAIS": 18.56,
-    "DANIEL MARCELO FELISBERTO OLIVEIRA": 8.02,
-    "FERNANDA MESQUITA DE FREITAS": 2.42,
-    "ROBERTO SILVA DO NASCIMENTO": 2.04,
-    "RODRIGO PIRES BERNARDINO": 0.04,
-    "SUELLEN HERNANDEZ DA SILVA": 10.08,
-    "MONICA DA SILVA RODRIGUES": 10.57,
-    "MARLEY MARQUES RIBEIRO": 11.51,
-    "KELLY PINHEIRO LIRA": 1.56,
-    "JENNIFER MARIA ANDRADE SANTOS": 6.08,
-    "THIAGO PEREIRA DA SILVA": 9.39,
-    "LEONARDO FERREIRA LIMA DE ALMEIDA": 9.27,
-    "MARISTELLA MARCIA DOS SANTOS": 1.55,
-    "SANDRO DA SILVA CARVALHO": -6.49,
-    "CRISTIANE HERMOGENES DA SILVA": 9.55,
-    "JEFFERSON LUIS GONÇALVES COITINHO": 14.36,
-    "EVILÁZIO ANDRÉ DE MAGALHÃES GOMES PEREIRA": -0.59,
-    "ELBERTON ANICETO HENRIQUE": 8.35,
-    "ALAN MARINHO DIAS": 11.45,
-    "JULIO CESAR SANTOS SOARES": 13.12,
-    "CARLOS EDUARDO BARRETO DE ABREU": 7.07,
-    "ROSANA RIEGER MATOS": 10.50,
-    "THIAGO DE SOUZA INACIO": 8.40
-  };
-
-  // Nomes dos meses para exibição
-  const mesesNomes = {
-    "maio": "Maio",
-    "junho": "Junho",
-    "julho": "Julho",
-    "agosto": "Agosto",
-    "setembro": "Setembro",
-    "outubro": "Outubro",
-    "novembro": "Novembro",
-    "dezembro": "Dezembro"
-  };
-
-  // Carregar dados salvos ao iniciar
-  document.addEventListener('DOMContentLoaded', function() {
-    carregarDados();
-    inicializarTabela();
-  });
-
-  // Carrega dados do localStorage ou inicializa com Maio
-  function carregarDados() {
-    const dadosSalvos = localStorage.getItem('bancoHoras');
-    if (dadosSalvos) {
-      bancoHoras = JSON.parse(dadosSalvos);
-    } else {
-      // Inicializar com dados de Maio
-      bancoHoras.meses = ["maio"];
-      bancoHoras.funcionarios = nomesFuncionarios.map(nome => {
-        return {
-          nome: nome,
-          maio: dadosIniciaisMaio[nome]
-        };
+      const promises = Array.from(files).map(file => {
+        return new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            resolve(json);
+          };
+          reader.readAsArrayBuffer(file);
+        });
       });
-      salvarDados();
+
+      Promise.all(promises).then(results => {
+        originalData = [].concat(...results);
+        updateFilterOptions(originalData);
+        applyFilters();
+      });
     }
-  }
 
-  // Salva dados no localStorage
-  function salvarDados() {
-    localStorage.setItem('bancoHoras', JSON.stringify(bancoHoras));
-  }
+    function updateFilterOptions(data) {
+      const monthSet = new Set();
+      const clusterSet = new Set();
 
-  // Inicializa a tabela com os dados atuais
-  function inicializarTabela() {
-    const tbody = document.querySelector("#tabelaHoras tbody");
-    tbody.innerHTML = "";
-
-    // Configurar cabeçalho com meses
-    const thead = document.querySelector("#tabelaHoras thead tr");
-    thead.innerHTML = "<th>Analista</th>";
-    
-    bancoHoras.meses.forEach(mesId => {
-      thead.innerHTML += `<th>${mesesNomes[mesId]}</th>`;
-    });
-    
-    thead.innerHTML += "<th>Total</th><th>Meses >10h</th><th>Status</th>";
-
-    // Adicionar linhas para cada funcionário
-    bancoHoras.funcionarios.forEach(funcionario => {
-      const row = document.createElement("tr");
-      
-      // Nome do funcionário
-      const nomeCell = document.createElement("td");
-      nomeCell.textContent = funcionario.nome;
-      row.appendChild(nomeCell);
-
-      // Células para cada mês
-      bancoHoras.meses.forEach(mesId => {
-        const cell = document.createElement("td");
-        const valor = funcionario[mesId];
-        
-        if (valor !== null && valor !== undefined) {
-          cell.textContent = valor.toFixed(2);
-          aplicarEstiloCelula(cell, valor);
-        } else {
-          cell.textContent = "";
-          cell.classList.add("sem-dados");
+      data.forEach(row => {
+        const date = new Date(row["DIA/HORA"]);
+        if (!isNaN(date)) {
+          const month = `${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
+          monthSet.add(month);
         }
-        
-        row.appendChild(cell);
-      });
-
-      // Célula de total
-      const totalCell = document.createElement("td");
-      totalCell.classList.add("total");
-      row.appendChild(totalCell);
-
-      // Célula de meses com excesso
-      const excessoCell = document.createElement("td");
-      row.appendChild(excessoCell);
-
-      // Célula de status
-      const statusCell = document.createElement("td");
-      row.appendChild(statusCell);
-
-      tbody.appendChild(row);
-    });
-
-    atualizarTotais();
-    verificarViolacoes();
-  }
-
-  // Aplica o estilo correto para cada célula baseado no valor
-  function aplicarEstiloCelula(cell, valor) {
-    // Limpar classes anteriores
-    cell.className = '';
-    
-    if (valor === null || valor === undefined) {
-      cell.classList.add("sem-dados");
-      return;
-    }
-    
-    if (valor > 10) {
-      cell.classList.add("excesso");
-    } else if (valor >= 0) {
-      cell.classList.add("normal");
-    } else {
-      cell.classList.add("saldo-negativo");
-    }
-  }
-
-  // Abre modal para editar um mês específico
-  function editarMes() {
-    const mesId = document.getElementById("selecionarMes").value;
-    const mesNome = mesesNomes[mesId];
-    
-    // Verificar se o mês já existe, se não, adicionar
-    if (!bancoHoras.meses.includes(mesId)) {
-      bancoHoras.meses.push(mesId);
-      
-      // Adicionar propriedade do mês para cada funcionário
-      bancoHoras.funcionarios.forEach(func => {
-        func[mesId] = null;
-      });
-      
-      salvarDados();
-    }
-    
-    // Criar modal de edição
-    const modal = document.createElement("div");
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.backgroundColor = "rgba(0,0,0,0.7)";
-    modal.style.display = "flex";
-    modal.style.justifyContent = "center";
-    modal.style.alignItems = "center";
-    modal.style.zIndex = "1000";
-    
-    const modalContent = document.createElement("div");
-    modalContent.style.backgroundColor = "white";
-    modalContent.style.padding = "20px";
-    modalContent.style.borderRadius = "5px";
-    modalContent.style.width = "80%";
-    modalContent.style.maxHeight = "80vh";
-    modalContent.style.overflowY = "auto";
-    
-    modalContent.innerHTML = `
-      <h2>Editar ${mesNome}</h2>
-      <table style="width: 100%; margin-top: 20px;">
-        <thead>
-          <tr>
-            <th>Analista</th>
-            <th>Horas</th>
-          </tr>
-        </thead>
-        <tbody id="modalBody">
-        </tbody>
-      </table>
-      <div style="margin-top: 20px; text-align: right;">
-        <button id="salvarModal" style="background-color: #4CAF50;">Salvar</button>
-        <button id="cancelarModal" style="background-color: #f44336;">Cancelar</button>
-      </div>
-    `;
-    
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    
-    // Preencher tabela no modal
-    const modalBody = document.getElementById("modalBody");
-    bancoHoras.funcionarios.forEach(funcionario => {
-      const row = document.createElement("tr");
-      
-      const nomeCell = document.createElement("td");
-      nomeCell.textContent = funcionario.nome;
-      row.appendChild(nomeCell);
-      
-      const horasCell = document.createElement("td");
-      const input = document.createElement("input");
-      input.type = "number";
-      input.step = "0.01";
-      input.value = funcionario[mesId] !== null && funcionario[mesId] !== undefined ? funcionario[mesId] : "";
-      input.style.width = "80px";
-      input.style.padding = "5px";
-      horasCell.appendChild(input);
-      row.appendChild(horasCell);
-      
-      modalBody.appendChild(row);
-    });
-    
-    // Evento para salvar
-    document.getElementById("salvarModal").addEventListener("click", function() {
-      const inputs = modalBody.querySelectorAll("input");
-      inputs.forEach((input, index) => {
-        const valor = input.value.trim() === "" ? null : parseFloat(input.value);
-        bancoHoras.funcionarios[index][mesId] = valor;
-      });
-      
-      salvarDados();
-      document.body.removeChild(modal);
-      inicializarTabela();
-    });
-    
-    // Evento para cancelar
-    document.getElementById("cancelarModal").addEventListener("click", function() {
-      document.body.removeChild(modal);
-    });
-  }
-
-  // Atualiza totais e contagem de meses com excesso
-  function atualizarTotais() {
-    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
-
-    rows.forEach((row, index) => {
-      let total = 0;
-      let mesesExcesso = 0;
-
-      // Calcular total e meses com excesso
-      for (let i = 1; i < row.cells.length - 3; i++) {
-        const valor = parseFloat(row.cells[i].textContent) || 0;
-        total += valor;
-        
-        if (valor > 10) {
-          mesesExcesso++;
+        if (row["CLUSTER"]) {
+          clusterSet.add(row["CLUSTER"]);
         }
+      });
+
+      const monthSelect = document.getElementById('monthFilter');
+      const clusterSelect = document.getElementById('clusterFilter');
+
+      // Limpa e atualiza os filtros
+      monthSelect.innerHTML = '<option value="">Todos</option>';
+      clusterSelect.innerHTML = '<option value="">Todos</option>';
+
+      [...monthSet].sort().forEach(m => {
+        monthSelect.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+      [...clusterSet].sort().forEach(c => {
+        clusterSelect.innerHTML += `<option value="${c}">${c}</option>`;
+      });
+    }
+
+    function applyFilters() {
+      const selectedMonth = document.getElementById('monthFilter').value;
+      const selectedCluster = document.getElementById('clusterFilter').value;
+
+      const filtered = originalData.filter(row => {
+        const date = new Date(row["DIA/HORA"]);
+        const month = !isNaN(date) ? `${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}` : "";
+        const cluster = row["CLUSTER"] || "";
+
+        return (!selectedMonth || month === selectedMonth) &&
+               (!selectedCluster || cluster === selectedCluster);
+      });
+
+      analyzeData(filtered);
+    }
+
+    function analyzeData(data) {
+      clearCanvas();  // Limpa gráficos anteriores
+      document.getElementById("output").innerHTML = "";
+
+      const clusterCount = {};
+      const tipoCount = {};
+      const tipoRalCount = {};
+      const horaCount = {};
+
+      data.forEach(row => {
+        const cluster = row["CLUSTER"];
+        const tipo = row["TIPO"];
+        const tipoRal = row["TIPO_RAL"];
+        const hora = new Date(row["DIA/HORA"]);
+        const horaCheia = isNaN(hora) ? null : hora.getHours();
+
+        if (cluster) clusterCount[cluster] = (clusterCount[cluster] || 0) + 1;
+        if (tipo) tipoCount[tipo] = (tipoCount[tipo] || 0) + 1;
+        if (tipoRal) tipoRalCount[tipoRal] = (tipoRalCount[tipoRal] || 0) + 1;
+        if (horaCheia !== null) horaCount[horaCheia] = (horaCount[horaCheia] || 0) + 1;
+      });
+
+      displayTable("Volume por Cluster", clusterCount);
+      displayTable("Volume por Tipo", tipoCount);
+      displayTable("Volume por Tipo de RAL", tipoRalCount);
+      displayTable("Volume por Hora (hora cheia)", horaCount);
+
+      renderChart("clusterChart", "Volume por Cluster", clusterCount, 'bar');
+      renderChart("tipoChart", "Volume por Tipo", tipoCount, 'pie');
+      renderChart("tipoRalChart", "Volume por Tipo de RAL", tipoRalCount, 'pie');
+      renderChart("horaChart", "Volume por Hora", horaCount, 'bar');
+    }
+
+    function displayTable(title, dataObj) {
+      const output = document.getElementById("output");
+      const sorted = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+      let html = `<h2>${title}</h2><table><tr><th>Categoria</th><th>Volume</th></tr>`;
+      sorted.forEach(([key, val]) => {
+        html += `<tr><td>${key}</td><td>${val}</td></tr>`;
+      });
+      html += "</table>";
+      output.innerHTML += html;
+    }
+
+    function renderChart(canvasId, label, dataObj, type) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      const labels = Object.keys(dataObj);
+      const data = Object.values(dataObj);
+
+      new Chart(ctx, {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            backgroundColor: generateColors(data.length),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: type !== 'bar',
+              position: 'top'
+            },
+            title: {
+              display: true,
+              text: label
+            }
+          },
+          scales: type === 'bar' ? {
+            y: {
+              beginAtZero: true
+            }
+          } : {}
+        }
+      });
+    }
+
+    function generateColors(count) {
+      const baseColors = ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40'];
+      while (baseColors.length < count) {
+        baseColors.push('#' + Math.floor(Math.random()*16777215).toString(16));
       }
-
-      // Atualizar células de total e excesso
-      row.cells[row.cells.length - 3].textContent = total.toFixed(2);
-      row.cells[row.cells.length - 2].textContent = mesesExcesso;
-    });
-  }
-
-  // Verifica violações (3+ meses consecutivos >10h)
-  function verificarViolacoes() {
-    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
-
-    rows.forEach(row => {
-      let contagem = 0;
-      let violou = false;
-
-      // Verificar células de meses (ignorando nome, total, meses >10h e status)
-      for (let i = 1; i < row.cells.length - 3; i++) {
-        const celula = row.cells[i];
-        const valor = parseFloat(celula.textContent) || 0;
-
-        if (valor > 10) {
-          contagem++;
-          
-          if (contagem >= 3) {
-            violou = true;
-          }
-        } else {
-          contagem = 0;
-        }
-      }
-
-      // Atualizar status
-      const statusCell = row.cells[row.cells.length - 1];
-      statusCell.textContent = violou ? "Violação" : "OK";
-      statusCell.className = violou ? "destaque violacao" : "";
-
-      // Destacar linha se violou
-      if (violou) {
-        row.classList.add("violacao");
-      } else {
-        row.classList.remove("violacao");
-      }
-    });
-  }
-
-  // Filtra a tabela por nome e/ou violações
-  function filtrarTabela() {
-    const filtroNome = document.getElementById("filtroNome").value.toUpperCase();
-    const filtroViolacao = document.getElementById("filtroViolacao").checked;
-    const rows = document.querySelectorAll("#tabelaHoras tbody tr");
-
-    rows.forEach(row => {
-      const nome = row.cells[0].textContent.toUpperCase();
-      const violacao = row.classList.contains("violacao");
-      
-      const mostraNome = nome.includes(filtroNome);
-      const mostraViolacao = !filtroViolacao || violacao;
-      
-      row.style.display = (mostraNome && mostraViolacao) ? "" : "none";
-    });
-  }
-
-  // Exporta dados para JSON
-  function exportarDados() {
-    const dadosParaExportar = bancoHoras;
-    
-    const blob = new Blob([JSON.stringify(dadosParaExportar, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'banco_de_horas.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  // Importa dados de JSON
-  function importarDados() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = e => {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = event => {
-        try {
-          const dados = JSON.parse(event.target.result);
-          bancoHoras = dados;
-          salvarDados();
-          inicializarTabela();
-          alert('Dados importados com sucesso!');
-        } catch (error) {
-          alert('Erro ao importar dados: ' + error.message);
-        }
-      };
-      
-      reader.readAsText(file);
-    };
-    
-    input.click();
-  }
-
-  // Limpa todos os dados
-  function limparDados() {
-    if (confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita.')) {
-      localStorage.removeItem('bancoHoras');
-      location.reload();
+      return baseColors.slice(0, count);
     }
-  }
-</script>
+
+    function clearCanvas() {
+      ["clusterChart", "tipoChart", "tipoRalChart", "horaChart"].forEach(id => {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.replaceWith(canvas.cloneNode(true)); // reset canvas state
+      });
+    }
+  </script>
 </body>
 </html>
