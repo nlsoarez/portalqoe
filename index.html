@@ -691,25 +691,97 @@ function renderReinc(){
     .filter(([_,list])=>list.length>1)
     .map(([n,l])=>({
       Node:n, Cluster:l[0].Cluster, Cidade:l[0].Cidade, Count:l.length,
-      Incidents:l.map(x=>({id:x.Tipo_Incidente, solucao:x.Tipo_Fechamento}))
+      Incidents:l.map(x=>({
+        id:x.Tipo_Incidente || '(sem tipo)', 
+        solucao:x.Tipo_Fechamento || '(sem solução)',
+        data: x.Data ? new Date(x.Data).toLocaleDateString('pt-BR') : '(sem data)'
+      }))
     })).sort((a,b)=>b.Count-a.Count);
 
   const tbody=$('#tblReinc tbody'); tbody.innerHTML='';
   reinc.forEach(r=>{
-    const tr=document.createElement('tr'); tr.className='pointer';
-    tr.innerHTML=`<td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td><td class="text-center fw-bold">${r.Count}</td>`;
+    const tr=document.createElement('tr'); 
+    tr.className='pointer';
+    tr.style.transition = 'background-color 0.2s ease';
+    tr.innerHTML=`
+      <td>${r.Node}</td>
+      <td>${r.Cluster}</td>
+      <td>${r.Cidade}</td>
+      <td class="text-center fw-bold">
+        ${r.Count}
+        <i class="bi bi-chevron-down ms-2 text-muted" style="font-size: 0.8rem;"></i>
+      </td>`;
     tr.addEventListener('click',()=>toggleDetalhesNode(tr,r));
+    tr.addEventListener('mouseenter', function() {
+      this.style.backgroundColor = 'rgba(76, 175, 80, 0.08)';
+    });
+    tr.addEventListener('mouseleave', function() {
+      if(!this.nextSibling || !this.nextSibling.classList.contains('details-row')) {
+        this.style.backgroundColor = '';
+      }
+    });
     tbody.appendChild(tr);
   });
 }
+
 function toggleDetalhesNode(tr,nodeData){
-  if(tr.nextSibling && tr.nextSibling.classList.contains('details-row')){ tr.nextSibling.remove(); return; }
+  // Se já está expandido, colapsa
+  if(tr.nextSibling && tr.nextSibling.classList.contains('details-row')){ 
+    tr.nextSibling.remove(); 
+    tr.style.backgroundColor = '';
+    const icon = tr.querySelector('i');
+    if(icon) {
+      icon.classList.remove('bi-chevron-up');
+      icon.classList.add('bi-chevron-down');
+    }
+    return; 
+  }
+  
+  // Remove outros detalhes expandidos
   $('#tblReinc .details-row').forEach(el=>el.remove());
-  const details=document.createElement('tr'); details.className='details-row bg-light';
-  details.innerHTML = `<td colspan="4">
-    <ul class="mb-0 list-unstyled">
-      ${nodeData.Incidents.map(inc=>`<li><strong>${inc.id}</strong> - ${inc.solucao||'Sem solução'}</li>`).join('')}
-    </ul>
+  $('#tblReinc tbody tr').forEach(row => row.style.backgroundColor = '');
+  $('#tblReinc i.bi-chevron-up').forEach(icon => {
+    icon.classList.remove('bi-chevron-up');
+    icon.classList.add('bi-chevron-down');
+  });
+  
+  // Expande este
+  tr.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+  const icon = tr.querySelector('i');
+  if(icon) {
+    icon.classList.remove('bi-chevron-down');
+    icon.classList.add('bi-chevron-up');
+  }
+  
+  const details=document.createElement('tr'); 
+  details.className='details-row bg-light';
+  details.innerHTML = `<td colspan="4" style="padding: 15px;">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom">
+        <strong class="text-primary"><i class="bi bi-list-ul me-2"></i>Incidentes Registrados</strong>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          ${nodeData.Incidents.map((inc, idx)=>`
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <span class="badge bg-primary me-2">${idx + 1}</span>
+                  <strong>${inc.id}</strong>
+                </div>
+                <small class="text-muted">${inc.data}</small>
+              </div>
+              <div class="mt-1 ms-4">
+                <small class="text-muted">
+                  <i class="bi bi-check-circle me-1"></i>
+                  Solução: <span class="text-dark">${inc.solucao}</span>
+                </small>
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>
   </td>`;
   tr.insertAdjacentElement('afterend', details);
 }
@@ -762,6 +834,7 @@ function upsertBar(id,label,labels,data,extra){
     },
     options:Object.assign({ 
       responsive:true, 
+      maintainAspectRatio:true,
       plugins:{ legend:{ display:false } },
       scales: {
         x: {
@@ -805,6 +878,7 @@ function upsertPie(id,labels,data){
     }, 
     options:{ 
       responsive: true,
+      maintainAspectRatio: true,
       plugins: {
         legend: {
           display: false
@@ -818,7 +892,7 @@ function upsertPie(id,labels,data){
 function exportTablePDF(title, tableSelector, chartId){
   const table=$(tableSelector);
   const head=Array.from(table.querySelectorAll('thead th')).map(th=>th.innerText);
-  const rows=Array.from(table.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.children).map(td=>td.innerText));
+  const rows=Array.from(table.querySelectorAll('tbody tr:not(.details-row)')).map(tr=>Array.from(tr.children).map(td=>td.innerText.replace(/\n/g, ' ').trim()));
 
   let img=null;
   if(chartId && charts[chartId]) img = charts[chartId].toBase64Image();
@@ -827,7 +901,7 @@ function exportTablePDF(title, tableSelector, chartId){
     pageSize:'A4', pageMargins:[24,24,24,24],
     content:[
       { text:title, style:'title' },
-      { text:new Date().toLocaleString(), style:'sub', margin:[0,0,0,6] },
+      { text:new Date().toLocaleString('pt-BR'), style:'sub', margin:[0,0,0,6] },
       img ? { image:img, width:480, margin:[0,0,0,12] } : {},
       { table:{ headerRows:1, widths:head.map(()=>'*'), body:[ head, ...rows ] }, layout:'lightHorizontalLines' }
     ],
@@ -855,7 +929,7 @@ document.getElementById('btnPDFResumo').addEventListener('click',()=>{
   const docDef={ pageSize:'A4', pageMargins:[24,24,24,24],
     content:[
       { text:'Dashboard Resumo', style:'title' },
-      { text:new Date().toLocaleString(), style:'sub', margin:[0,0,0,6] },
+      { text:new Date().toLocaleString('pt-BR'), style:'sub', margin:[0,0,0,6] },
       { table:{ headerRows:1, widths:['*','auto','auto','auto'], body:[ head, ...body ] }, layout:'lightHorizontalLines' }
     ],
     styles:{ title:{fontSize:16,bold:true,color:'#2e7d32'}, sub:{fontSize:9,color:'#666'} }
@@ -868,7 +942,6 @@ function groupBy(a,k){ return a.reduce((acc,c)=>{ const key=c[k]||''; (acc[key]|
 
 /* ================= UI Helpers ================= */
 function showLoading() {
-  // Remove existing loading overlay if any
   hideLoading();
   
   const overlay = document.createElement('div');
@@ -894,7 +967,6 @@ function hideLoading() {
 }
 
 function showToast(message, type = 'info') {
-  // Remove existing toasts
   const existingToasts = document.querySelectorAll('.toast-container');
   existingToasts.forEach(toast => toast.remove());
   
@@ -919,7 +991,6 @@ function showToast(message, type = 'info') {
   toastContainer.appendChild(toast);
   document.body.appendChild(toastContainer);
   
-  // Initialize and show the toast
   const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
   bsToast.show();
 }
@@ -935,44 +1006,34 @@ function renderAll(){
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
   
-  // Esconder botão de voltar inicialmente
   document.getElementById('btnVoltarCluster').style.display = 'none';
   
-  // Botão voltar para clusters
   document.getElementById('btnVoltarCluster').addEventListener('click', function() {
-    // Limpar seleção
     selectedCluster = null;
     
-    // Remover destaque das linhas
     document.querySelectorAll('#tblCluster .cluster-row').forEach(row => {
       row.classList.remove('selected');
     });
     
-    // Voltar para a aba de clusters
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
     
     document.getElementById('tabClusterBtn').classList.add('active');
     document.getElementById('tabCluster').classList.add('show', 'active');
     
-    // Esconder botão de voltar
     this.style.display = 'none';
   });
   
-  // Interceptar cliques nas abas para gerenciar o botão de voltar
   document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', function() {
-      // Se não for a aba de cidades, esconder o botão de voltar
       if(this.id !== 'tabCidadeBtn') {
         document.getElementById('btnVoltarCluster').style.display = 'none';
       } else if(selectedCluster) {
-        // Se for a aba de cidades e houver cluster selecionado, mostrar botão
         document.getElementById('btnVoltarCluster').style.display = 'inline-block';
       }
     });
