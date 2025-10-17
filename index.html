@@ -604,7 +604,7 @@ function renderCluster(){
     </tr>`
   ).join('');
   
-  // Adicionar event listeners para as linhas - CORREÇÃO AQUI
+  // Adicionar event listeners para as linhas
   const clusterRows = document.querySelectorAll('#tblCluster .cluster-row');
   clusterRows.forEach(row => {
     row.addEventListener('click', function() {
@@ -613,12 +613,20 @@ function renderCluster(){
     });
   });
   
+  // Restaurar seleção se houver
+  if(selectedCluster) {
+    clusterRows.forEach(row => {
+      if(row.getAttribute('data-cluster') === selectedCluster) {
+        row.classList.add('selected');
+      }
+    });
+  }
+  
   upsertBar('chartCluster','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
 }
 
 /* ================= Mostrar Cidades por Cluster ================= */
 function showCidadesPorCluster(cluster) {
-  console.log('Mostrando cidades para o cluster:', cluster);
   selectedCluster = cluster;
   
   // Filtrar dados pelo cluster selecionado
@@ -640,8 +648,8 @@ function showCidadesPorCluster(cluster) {
   // Atualizar gráfico de cidades
   upsertBar('chartCidade','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
   
-  // Atualizar título
-  $('#tituloCidade').text(`Incidentes por Cidade - Cluster: ${cluster}`);
+  // Atualizar título com destaque visual
+  $('#tituloCidade').innerHTML = `Incidentes por Cidade<br><small class="text-muted">Cluster: <strong class="text-primary">${cluster}</strong></small>`;
   
   // Destacar a linha do cluster selecionado
   const clusterRows = document.querySelectorAll('#tblCluster .cluster-row');
@@ -652,25 +660,15 @@ function showCidadesPorCluster(cluster) {
     }
   });
   
-  // Ativar a aba de cidades - SOLUÇÃO SIMPLIFICADA E FUNCIONAL
-  const tabCidadeBtn = document.getElementById('tabCidadeBtn');
-  if (tabCidadeBtn) {
-    // Remover classe active de todos os botões de navegação
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.classList.remove('active');
-    });
-    
-    // Remover classe active de todos os painéis de conteúdo
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-      pane.classList.remove('show', 'active');
-    });
-    
-    // Adicionar classe active ao botão da aba de cidades
-    tabCidadeBtn.classList.add('active');
-    
-    // Adicionar classe active ao painel de conteúdo da aba de cidades
-    document.getElementById('tabCidade').classList.add('show', 'active');
-  }
+  // Ativar a aba de cidades
+  document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
+  
+  document.getElementById('tabCidadeBtn').classList.add('active');
+  document.getElementById('tabCidade').classList.add('show', 'active');
+  
+  // Mostrar botão de voltar
+  document.getElementById('btnVoltarCluster').style.display = 'inline-block';
 }
 
 /* ================= Tipo de Fechamento ================= */
@@ -706,7 +704,7 @@ function renderReinc(){
 }
 function toggleDetalhesNode(tr,nodeData){
   if(tr.nextSibling && tr.nextSibling.classList.contains('details-row')){ tr.nextSibling.remove(); return; }
-  $$('#tblReinc .details-row').forEach(el=>el.remove());
+  $('#tblReinc .details-row').forEach(el=>el.remove());
   const details=document.createElement('tr'); details.className='details-row bg-light';
   details.innerHTML = `<td colspan="4">
     <ul class="mb-0 list-unstyled">
@@ -943,19 +941,40 @@ document.addEventListener('DOMContentLoaded', function() {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
   
+  // Esconder botão de voltar inicialmente
+  document.getElementById('btnVoltarCluster').style.display = 'none';
+  
   // Botão voltar para clusters
   document.getElementById('btnVoltarCluster').addEventListener('click', function() {
-    // Remover a classe active de todas as abas
+    // Limpar seleção
+    selectedCluster = null;
+    
+    // Remover destaque das linhas
+    document.querySelectorAll('#tblCluster .cluster-row').forEach(row => {
+      row.classList.remove('selected');
+    });
+    
+    // Voltar para a aba de clusters
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
     
-    // Ativar a aba de clusters
     document.getElementById('tabClusterBtn').classList.add('active');
     document.getElementById('tabCluster').classList.add('show', 'active');
     
-    // Remover seleção das linhas
-    document.querySelectorAll('#tblCluster .cluster-row').forEach(row => {
-      row.classList.remove('selected');
+    // Esconder botão de voltar
+    this.style.display = 'none';
+  });
+  
+  // Interceptar cliques nas abas para gerenciar o botão de voltar
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function() {
+      // Se não for a aba de cidades, esconder o botão de voltar
+      if(this.id !== 'tabCidadeBtn') {
+        document.getElementById('btnVoltarCluster').style.display = 'none';
+      } else if(selectedCluster) {
+        // Se for a aba de cidades e houver cluster selecionado, mostrar botão
+        document.getElementById('btnVoltarCluster').style.display = 'inline-block';
+      }
     });
   });
 });
