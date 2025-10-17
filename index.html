@@ -460,7 +460,7 @@ function fmtPct(n){
 }
 function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
 
-/* ================= Upload / Demo ================= */
+/* ================= Upload ================= */
 const dropArea=$('#dropArea');
 const fileInput = $('#fileInput');
 
@@ -595,7 +595,7 @@ function renderCluster(){
   
   const tbody = $('#tblCluster tbody');
   tbody.innerHTML = arr.map(({c,v}) => 
-    `<tr class="cluster-row" data-cluster="${c}">
+    `<tr class="cluster-row pointer" data-cluster="${c}">
       <td>${c||'(vazio)'}</td>
       <td class="text-end">${v}</td>
     </tr>`
@@ -638,10 +638,6 @@ function showCidadesPorCluster(cluster) {
   // Atualizar título
   $('#tituloCidade').text(`Incidentes por Cidade - Cluster: ${cluster}`);
   
-  // Mostrar a aba de cidades
-  const tabCidade = new bootstrap.Tab($('#tabCidade'));
-  tabCidade.show();
-  
   // Destacar a linha do cluster selecionado
   $$('#tblCluster .cluster-row').forEach(row => {
     row.classList.remove('selected');
@@ -649,6 +645,19 @@ function showCidadesPorCluster(cluster) {
       row.classList.add('selected');
     }
   });
+  
+  // Ativar a aba de cidades
+  const tabCidade = document.getElementById('tabCidade');
+  const tabTrigger = document.createElement('button');
+  tabTrigger.setAttribute('data-bs-toggle', 'tab');
+  tabTrigger.setAttribute('data-bs-target', '#tabCidade');
+  
+  // Usar Bootstrap para ativar a aba
+  const tab = new bootstrap.Tab(tabTrigger);
+  tab.show();
+  
+  // Remover o elemento temporário
+  tabTrigger.remove();
 }
 
 /* ================= Tipo de Fechamento ================= */
@@ -921,8 +930,8 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Botão voltar para clusters
   $('#btnVoltarCluster').addEventListener('click', function() {
-    const tabCluster = new bootstrap.Tab($('#tabCluster'));
-    tabCluster.show();
+    const tabCluster = document.querySelector('[data-bs-target="#tabCluster"]');
+    bootstrap.Tab.getInstance(tabCluster).show();
   });
 });
 </script>
