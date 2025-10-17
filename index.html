@@ -282,6 +282,7 @@
       <hr class="my-4"/>
       <div class="nav flex-column gap-1" role="tablist">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCluster" type="button"><i class="bi bi-diagram-3"></i> Incidentes por Cluster</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCidade" type="button" id="tabCidadeBtn"><i class="bi bi-geo-alt"></i> Incidentes por Cidade</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQOE" type="button"><i class="bi bi-arrow-left-right"></i> QOE Pré vs Pós</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFechamento" type="button"><i class="bi bi-pie-chart"></i> Tipo de Fechamento</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReinc" type="button"><i class="bi bi-clock-history"></i> Reincidência</button>
@@ -646,18 +647,9 @@ function showCidadesPorCluster(cluster) {
     }
   });
   
-  // Ativar a aba de cidades
-  const tabCidade = document.getElementById('tabCidade');
-  const tabTrigger = document.createElement('button');
-  tabTrigger.setAttribute('data-bs-toggle', 'tab');
-  tabTrigger.setAttribute('data-bs-target', '#tabCidade');
-  
-  // Usar Bootstrap para ativar a aba
-  const tab = new bootstrap.Tab(tabTrigger);
-  tab.show();
-  
-  // Remover o elemento temporário
-  tabTrigger.remove();
+  // Ativar a aba de cidades - SOLUÇÃO DIRETA
+  const tabCidadeBtn = document.getElementById('tabCidadeBtn');
+  bootstrap.Tab.getInstance(tabCidadeBtn).show();
 }
 
 /* ================= Tipo de Fechamento ================= */
@@ -930,8 +922,8 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Botão voltar para clusters
   $('#btnVoltarCluster').addEventListener('click', function() {
-    const tabCluster = document.querySelector('[data-bs-target="#tabCluster"]');
-    bootstrap.Tab.getInstance(tabCluster).show();
+    const tabClusterBtn = document.querySelector('[data-bs-target="#tabCluster"]');
+    bootstrap.Tab.getInstance(tabClusterBtn).show();
   });
 });
 </script>
