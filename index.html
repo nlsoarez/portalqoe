@@ -174,14 +174,6 @@
       border-bottom: 1px solid #eee;
     }
     
-    .filter-section {
-      background: #f9fdf9;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-      border: 1px solid var(--border-color);
-    }
-    
     .section-title {
       color: var(--primary-green);
       font-weight: 600;
@@ -267,34 +259,6 @@
         <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
         <p class="mb-1">Arraste e solte sua planilha aqui</p>
         <span class="small-note text-muted">Suporta XLSX, XLS e CSV</span>
-      </div>
-
-      <!-- Filtros -->
-      <div class="filter-section">
-        <h6 class="section-title">Filtros</h6>
-        <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">Cluster</label>
-          <select id="filtroCluster" class="form-select form-select-sm">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">Cidade</label>
-          <select id="filtroCidade" class="form-select form-select-sm">
-            <option value="">Todas</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">Período</label>
-          <div class="d-flex gap-1">
-            <input id="filtroDataIni" type="date" class="form-control form-control-sm"/>
-            <input id="filtroDataFim" type="date" class="form-control form-control-sm"/>
-          </div>
-        </div>
-        <div class="d-grid gap-2 mt-3">
-          <button class="btn btn-primary btn-sm" id="btnAplicarFiltros"><i class="bi bi-funnel"></i> Aplicar Filtros</button>
-          <button class="btn btn-outline-secondary btn-sm" id="btnLimparFiltros"><i class="bi bi-x-circle"></i> Limpar</button>
-        </div>
       </div>
 
       <hr class="my-4"/>
@@ -484,7 +448,6 @@ $('#btnDemo').addEventListener('click',()=>{
   setTimeout(() => {
     DATA_ALL=makeDemoData(); 
     RAW=[...DATA_ALL]; 
-    preencherFiltros();
     renderAll(); 
     showToast(`✅ ${RAW.length} incidentes carregados (DEMO)`, 'success');
     hideLoading();
@@ -534,7 +497,7 @@ function handleFile(file){
       }
 
       DATA_ALL=rows; RAW=[...rows];
-      preencherFiltros(); renderAll();
+      renderAll();
       showToast(`✅ ${rows.length} incidentes carregados com sucesso`, 'success');
     }catch(err){
       console.error(err);
@@ -542,45 +505,6 @@ function handleFile(file){
     }
   };
   reader.readAsArrayBuffer(file);
-}
-
-/* ================= Filtros ================= */
-function preencherFiltros(){
-  const clusters=[...new Set(DATA_ALL.map(r=>r.Cluster).filter(Boolean))].sort();
-  $('#filtroCluster').innerHTML = '<option value="">Todos</option>' +
-     clusters.map(c=>`<option value="${c}">${c}</option>`).join('');
-  atualizarFiltroCidade();
-}
-$('#filtroCluster').addEventListener('change', atualizarFiltroCidade);
-function atualizarFiltroCidade(){
-  const cSel=$('#filtroCluster').value;
-  const cidades=[...new Set(
-    DATA_ALL.filter(r=>!cSel || r.Cluster===cSel).map(r=>r.Cidade).filter(Boolean)
-  )].sort();
-  $('#filtroCidade').innerHTML = '<option value="">Todas</option>' +
-    cidades.map(c=>`<option value="${c}">${c}</option>`).join('');
-}
-$('#btnAplicarFiltros').addEventListener('click', aplicarFiltros);
-$('#btnLimparFiltros').addEventListener('click', ()=>{
-  $('#filtroCluster').value=''; $('#filtroCidade').value='';
-  $('#filtroDataIni').value=''; $('#filtroDataFim').value='';
-  RAW=[...DATA_ALL]; renderAll();
-  showToast('Filtros limpos com sucesso', 'info');
-});
-function aplicarFiltros(){
-  const cl=$('#filtroCluster').value, ci=$('#filtroCidade').value;
-  const di=$('#filtroDataIni').value? new Date($('#filtroDataIni').value): null;
-  const df=$('#filtroDataFim').value? new Date($('#filtroDataFim').value): null;
-  RAW=DATA_ALL.filter(r=>{
-    let ok=true;
-    if(cl) ok = ok && r.Cluster===cl;
-    if(ci) ok = ok && r.Cidade===ci;
-    if(di) ok = ok && r.Data && r.Data >= di;
-    if(df){ const end=new Date(df); end.setHours(23,59,59,999); ok = ok && r.Data && r.Data <= end; }
-    return ok;
-  });
-  renderAll();
-  showToast(`Filtros aplicados: ${RAW.length} incidentes`, 'info');
 }
 
 /* ================= QOE ================= */
@@ -734,19 +658,27 @@ function upsertBar(id,label,labels,data,extra){
     }, extra||{})
   });
 }
+
 function upsertPie(id,labels,data){
   const ctx=document.getElementById(id);
   if(charts[id]) charts[id].destroy();
+  
+  // Paleta de cores diversificada para o gráfico de pizza
+  const colorPalette = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+    '#9966FF', '#FF9F40', '#8AC926', '#1982C4',
+    '#6A4C93', '#F15BB5', '#00BBF9', '#FB5607',
+    '#8338EC', '#3A86FF', '#FF006E', '#1B4332',
+    '#2D00F7', '#C77DFF', '#B5179E', '#7209B7'
+  ];
+  
   charts[id]=new Chart(ctx,{ 
     type:'pie', 
     data:{ 
       labels, 
       datasets:[{ 
         data,
-        backgroundColor: [
-          '#2e7d32', '#4caf50', '#81c784', '#a5d6a7', 
-          '#c8e6c9', '#66bb6a', '#43a047', '#388e3c'
-        ],
+        backgroundColor: colorPalette,
         borderColor: '#fff',
         borderWidth: 2
       }] 
