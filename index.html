@@ -24,6 +24,11 @@
     .upload-drop.dragover{background:#eef6ff;border-color:var(--claro-red);}
     .legend-dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:.35rem;}
     .chart-wrap{position:relative;height:340px;}
+    .text-danger { color: #e30613 !important; }
+    .text-warning { color: #e3a81e !important; }
+    .text-success { color: #29a329 !important; }
+    .fw-bold { font-weight: 700 !important; }
+    .card h5 { font-weight: 600; }
   </style>
 </head>
 <body>
@@ -45,6 +50,34 @@
         <p class="mb-1">Arraste e solte sua planilha aqui</p>
         <span class="small-note">Ou clique no campo acima</span>
       </div>
+
+      <!-- Filtros -->
+      <h6 class="text-uppercase text-muted mb-2">Filtros</h6>
+      <div class="mb-2">
+        <label class="form-label">Cluster</label>
+        <select id="filtroCluster" class="form-select form-select-sm">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Cidade</label>
+        <select id="filtroCidade" class="form-select form-select-sm">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Período</label>
+        <div class="d-flex gap-1">
+          <input id="filtroDataIni" type="date" class="form-control form-control-sm"/>
+          <input id="filtroDataFim" type="date" class="form-control form-control-sm"/>
+        </div>
+      </div>
+      <div class="d-grid gap-2 mt-2">
+        <button class="btn btn-primary btn-sm" id="btnAplicarFiltros"><i class="bi bi-funnel"></i> Aplicar</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnLimparFiltros"><i class="bi bi-x-circle"></i> Limpar</button>
+      </div>
+
+      <hr class="my-4"/>
       <div class="nav flex-column gap-1" role="tablist">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCluster" type="button"><i class="bi bi-diagram-3"></i> Incidentes por Cluster</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQOE" type="button"><i class="bi bi-arrow-left-right"></i> QOE Pré vs Pós</button>
@@ -53,8 +86,10 @@
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabResumo" type="button"><i class="bi bi-speedometer2"></i> Dashboard</button>
       </div>
     </nav>
+
     <main class="col-12 col-md-9 col-lg-10 p-3 p-md-4">
       <div class="tab-content">
+        <!-- INCIDENTES -->
         <section class="tab-pane fade show active" id="tabCluster">
           <h5>Incidentes por Cluster</h5>
           <div class="row">
@@ -68,14 +103,16 @@
           </div>
         </section>
 
+        <!-- QOE -->
         <section class="tab-pane fade" id="tabQOE">
           <h5>QOE Pré vs Pós</h5>
           <table class="table table-sm" id="tblQoeNode">
-            <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th>Pré</th><th>Pós</th><th>Variação</th><th>Status</th></tr></thead>
+            <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th><strong>Pré</strong></th><th><strong>Pós</strong></th><th>Variação</th><th>Status</th></tr></thead>
             <tbody></tbody>
           </table>
         </section>
 
+        <!-- FECHAMENTO -->
         <section class="tab-pane fade" id="tabFechamento">
           <h5>Tipo de Fechamento</h5>
           <div class="row">
@@ -89,14 +126,16 @@
           </div>
         </section>
 
+        <!-- REINCIDÊNCIA -->
         <section class="tab-pane fade" id="tabReinc">
           <h5>Log de Reincidência</h5>
           <table class="table table-sm" id="tblReinc">
-            <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th>Data</th><th>Tipo</th><th>Status</th></tr></thead>
+            <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th>Ocorrências</th></tr></thead>
             <tbody></tbody>
           </table>
         </section>
 
+        <!-- DASHBOARD -->
         <section class="tab-pane fade" id="tabResumo">
           <h5>Dashboard Resumo</h5>
           <div id="cardsResumo" class="row g-3"></div>
@@ -130,7 +169,7 @@ $('#dropArea').addEventListener('drop',e=>{
 ;['dragenter','dragover'].forEach(evt=>$('#dropArea').addEventListener(evt,e=>{e.preventDefault();$('#dropArea').classList.add('dragover');}));
 ;['dragleave','drop'].forEach(evt=>$('#dropArea').addEventListener(evt,e=>{e.preventDefault();$('#dropArea').classList.remove('dragover');}));
 
-$('#btnDemo').addEventListener('click',()=>{DATA_ALL=makeDemoData();RAW=[...DATA_ALL];alert(`✅ ${RAW.length} incidentes carregados (DEMO)`);renderAll();});
+$('#btnDemo').addEventListener('click',()=>{DATA_ALL=makeDemoData();RAW=[...DATA_ALL];preencherFiltros();alert(`✅ ${RAW.length} incidentes carregados (DEMO)`);renderAll();});
 
 function handleFile(file){
  const reader=new FileReader();
@@ -140,7 +179,6 @@ function handleFile(file){
    const ws=wb.Sheets[wb.SheetNames[0]];
    let json=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
    const header=json[0].map(h=>String(h).trim());
-   console.log("Cabeçalhos detectados:",header);
    const mappedHeader=header.map(h=>AUTO_MAP[h.toUpperCase()]||h);
    const rows=json.slice(1).map(r=>{
      const o={};mappedHeader.forEach((h,i)=>o[h]=r[i]);
@@ -150,29 +188,80 @@ function handleFile(file){
      return o;
    });
    DATA_ALL=rows;RAW=[...rows];
+   preencherFiltros();
    alert(`✅ ${rows.length} incidentes carregados com sucesso`);
    renderAll();
  };
  reader.readAsArrayBuffer(file);
 }
 
-function renderAll(){renderCluster();renderQoe();renderFechamento();renderReinc();renderResumo();}
-
-function renderCluster(){
- const grp=countBy(RAW,'Cluster');
- const arr=Object.entries(grp).map(([k,v])=>({Cluster:k,Inc:v})).sort((a,b)=>b.Inc-a.Inc);
- $('#tblCluster tbody').innerHTML=arr.map(r=>`<tr><td>${r.Cluster}</td><td>${r.Inc}</td></tr>`).join('');
- upsertBar('chartCluster','Incidentes',arr.map(r=>r.Cluster),arr.map(r=>r.Inc),{indexAxis:'y'});
+// ==================== FILTROS ====================
+function preencherFiltros(){
+  const clusters = Array.from(new Set(DATA_ALL.map(r=>r.Cluster).filter(Boolean))).sort();
+  $('#filtroCluster').innerHTML = `<option value="">Todos</option>`+clusters.map(c=>`<option value="${c}">${c}</option>`).join('');
+  atualizarFiltroCidade();
 }
 
-function renderQoe(){
- const byNode=aggregateQoe(RAW,['Node','Cluster','Cidade']);
- $('#tblQoeNode tbody').innerHTML=byNode.map(r=>rowQoeHtml(r)).join('');
+$('#filtroCluster').addEventListener('change', atualizarFiltroCidade);
+function atualizarFiltroCidade(){
+  const clusterSel = $('#filtroCluster').value;
+  const cidades = Array.from(new Set(
+    DATA_ALL.filter(r=>!clusterSel || r.Cluster===clusterSel).map(r=>r.Cidade).filter(Boolean)
+  )).sort();
+  $('#filtroCidade').innerHTML = `<option value="">Todas</option>`+cidades.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
+
+$('#btnAplicarFiltros').addEventListener('click', aplicarFiltros);
+$('#btnLimparFiltros').addEventListener('click', ()=>{
+  $('#filtroCluster').value='';
+  $('#filtroCidade').value='';
+  $('#filtroDataIni').value='';
+  $('#filtroDataFim').value='';
+  RAW=[...DATA_ALL];
+  renderAll();
+});
+
+function aplicarFiltros(){
+ const cl=$('#filtroCluster').value;
+ const ci=$('#filtroCidade').value;
+ const di=$('#filtroDataIni').value?new Date($('#filtroDataIni').value):null;
+ const df=$('#filtroDataFim').value?new Date($('#filtroDataFim').value):null;
+ RAW = DATA_ALL.filter(r=>{
+   let ok=true;
+   if(cl) ok=ok&&r.Cluster===cl;
+   if(ci) ok=ok&&r.Cidade===ci;
+   if(di) ok=ok&&r.Data&&r.Data>=di;
+   if(df){const end=new Date(df);end.setHours(23,59,59,999);ok=ok&&r.Data&&r.Data<=end;}
+   return ok;
+ });
+ renderAll();
+}
+
+// ==================== QOE ====================
+function colorByValue(v) {
+  if (!isFinite(v)) return '';
+  if (v <= 40) return 'text-danger fw-bold';
+  if (v <= 80) return 'text-warning fw-bold';
+  return 'text-success fw-bold';
+}
+
 function rowQoeHtml(r){
- const s=statusFromDelta(r.varPct);
- return `<tr><td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td><td>${fmtNum(r.qoePre)}</td><td>${fmtNum(r.qoePos)}</td><td>${fmtPct(r.varPct)}</td><td>${s}</td></tr>`;
+  const arrow = r.varPct > 1 ? '<span class="text-success fw-bold"><i class="bi bi-arrow-up"></i></span>'
+               : '<span class="text-danger fw-bold"><i class="bi bi-arrow-down"></i></span>';
+  const statusClass = r.varPct > 1 ? 'text-success fw-bold' : 'text-danger fw-bold';
+  const status = r.varPct > 1 ? 'Melhoria' : 'Piora/Estável';
+
+  return `<tr>
+    <td>${r.Node}</td>
+    <td>${r.Cluster}</td>
+    <td>${r.Cidade}</td>
+    <td class="text-end ${colorByValue(r.qoePre)}">${fmtNum(r.qoePre)}</td>
+    <td class="text-end ${colorByValue(r.qoePos)}">${fmtNum(r.qoePos)}</td>
+    <td class="text-end">${arrow} ${fmtPct(r.varPct)}</td>
+    <td class="${statusClass}">${status}</td>
+  </tr>`;
 }
+
 function aggregateQoe(rows,keys){
  const map=new Map();
  rows.forEach(r=>{
@@ -187,6 +276,21 @@ function aggregateQoe(rows,keys){
  });
 }
 
+// ==================== RENDER ====================
+function renderAll(){renderCluster();renderQoe();renderFechamento();renderReinc();renderResumo();}
+
+function renderCluster(){
+ const grp=countBy(RAW,'Cluster');
+ const arr=Object.entries(grp).map(([k,v])=>({Cluster:k,Inc:v})).sort((a,b)=>b.Inc-a.Inc);
+ $('#tblCluster tbody').innerHTML=arr.map(r=>`<tr><td>${r.Cluster}</td><td>${r.Inc}</td></tr>`).join('');
+ upsertBar('chartCluster','Incidentes',arr.map(r=>r.Cluster),arr.map(r=>r.Inc),{indexAxis:'y'});
+}
+
+function renderQoe(){
+ const byNode=aggregateQoe(RAW,['Node','Cluster','Cidade']);
+ $('#tblQoeNode tbody').innerHTML=byNode.map(r=>rowQoeHtml(r)).join('');
+}
+
 function renderFechamento(){
  const grp=countBy(RAW,'Tipo_Fechamento');
  const total=Object.values(grp).reduce((a,b)=>a+b,0)||1;
@@ -199,33 +303,42 @@ function renderFechamento(){
 
 function renderReinc(){
  const byNode=groupBy(RAW,'Node');
- $('#tblReinc tbody').innerHTML=RAW.map(r=>{
-   const st=(byNode[r.Node]?.length>1)?'Reincidente':'Único';
-   return `<tr><td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td><td>${fmtDate(r.Data)}</td><td>${r.Tipo_Incidente}</td><td>${st}</td></tr>`;
- }).join('');
+ const reinc=Object.entries(byNode).filter(([_,list])=>list.length>1).map(([n,l])=>{
+   return {Node:n,Cluster:l[0].Cluster,Cidade:l[0].Cidade,Count:l.length};
+ });
+ reinc.sort((a,b)=>b.Count-a.Count);
+ $('#tblReinc tbody').innerHTML=reinc.map(r=>`<tr><td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td><td class="fw-bold text-center">${r.Count}</td></tr>`).join('');
 }
 
 function renderResumo(){
  const byCluster=groupBy(RAW,'Cluster');
- const wrap=$('#cardsResumo');wrap.innerHTML='';
- Object.entries(byCluster).forEach(([cluster,rows])=>{
+ $('#cardsResumo').innerHTML='';
+ Object.entries(byCluster).forEach(([cl,rows])=>{
    const total=rows.length;
    const nodes=groupBy(rows,'Node');
    const reinc=Object.values(nodes).filter(a=>a.length>1).length;
    const taxa=total?(reinc/Object.keys(nodes).length*100):0;
    const varPct=aggregateQoe(rows,['Cluster'])[0]?.varPct||0;
+   const qClass=varPct>0?'text-success fw-bold':'text-danger fw-bold';
+   const rClass=taxa>20?'text-danger':'text-success';
    const card=document.createElement('div');
    card.className='col-12 col-md-6 col-lg-4';
-   card.innerHTML=`<div class='card p-3'><h6>${cluster}</h6><p>${total} incidentes</p><p>Taxa Reinc.: ${fmtPct(taxa)}</p><p>Δ QOE: ${fmtPct(varPct)}</p></div>`;
-   wrap.appendChild(card);
+   card.innerHTML=`<div class="card h-100 shadow-sm border-0">
+     <div class="card-body">
+       <h5 class="mb-2">${cl||'(vazio)'}</h5>
+       <p class="mb-1"><strong>${total}</strong> incidentes</p>
+       <p class="mb-1">Δ QOE: <span class="${qClass}">${fmtPct(varPct)}</span></p>
+       <p class="mb-0">Taxa Reinc.: <span class="${rClass}">${fmtPct(taxa)}</span></p>
+     </div></div>`;
+   $('#cardsResumo').appendChild(card);
  });
 }
 
-function statusFromDelta(p){if(p>2)return'Melhoria';if(p<-2)return'Piora';return'Estável';}
-function upsertBar(id,label,labels,data,opts){
+// ==================== CHARTS ====================
+function upsertBar(id,label,labels,data,extra){
  const ctx=document.getElementById(id);
  if(charts[id])charts[id].destroy();
- charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label,data}]},options:Object.assign({responsive:true,maintainAspectRatio:false},opts)});
+ charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label,data}]},options:Object.assign({responsive:true,plugins:{legend:{display:false}}},extra)});
 }
 function upsertPie(id,labels,data){
  const ctx=document.getElementById(id);
@@ -233,24 +346,24 @@ function upsertPie(id,labels,data){
  charts[id]=new Chart(ctx,{type:'pie',data:{labels,datasets:[{data}]},options:{responsive:true}});
 }
 
-function countBy(arr,key){return arr.reduce((a,c)=>{const k=c[key]||'';a[k]=(a[k]||0)+1;return a;},{});}
-function groupBy(arr,key){return arr.reduce((a,c)=>{const k=c[key]||'';(a[k]||(a[k]=[])).push(c);return a;},{});}
+// ==================== UTIL ====================
+function groupBy(a,k){return a.reduce((acc,c)=>{const key=c[k]||'';(acc[key]||(acc[key]=[])).push(c);return acc;},{});}
+function countBy(a,k){return a.reduce((acc,c)=>{const key=c[k]||'';acc[key]=(acc[key]||0)+1;return acc;},{});}
 function fmtPct(n){return isFinite(n)?`${n.toFixed(1)}%`:'—';}
 function fmtNum(n){return isFinite(n)?n.toFixed(1):'—';}
-function fmtDate(d){return d?new Date(d).toLocaleString():'—';}
 
 function makeDemoData(){
- const clusters=['RJ','ES','MG'];
- const cidades={RJ:['RIO DE JANEIRO'],ES:['VILA VELHA'],MG:['BELO HORIZONTE']};
- const tipos=['MDU FILTRADO','SDU FILTRADO','NORMALIZADO SEM INTERVENÇÃO'];
+ const clusters=['RJ','SP','MG','ES'];
+ const cidades={RJ:['RIO','NITEROI'],SP:['SÃO PAULO','SANTOS'],MG:['BELO HORIZONTE'],ES:['VILA VELHA']};
+ const tipos=['MDU FILTRADO','SDU FILTRADO','NORMALIZADO','CLEARDATE'];
  const out=[];
- for(let i=0;i<57;i++){
-   const c=clusters[Math.floor(Math.random()*clusters.length)];
-   const ci=cidades[c][0];
-   const node='NODE-'+(100+Math.floor(Math.random()*900));
-   const dt=new Date(2025,9,10+Math.floor(Math.random()*5),6+Math.floor(Math.random()*12));
-   const pre=20+Math.random()*50;const pos=pre+(-10+Math.random()*40);
-   out.push({Cluster:c,Cidade:ci,Node:node,Data:dt,Tipo_Incidente:'INM'+(10000000+i),Tipo_Fechamento:tipos[Math.floor(Math.random()*tipos.length)],QOE_Pre:Math.round(pre),QOE_Pos:Math.round(pos)});
+ for(let i=0;i<100;i++){
+   const cl=clusters[Math.floor(Math.random()*clusters.length)];
+   const ci=cidades[cl][Math.floor(Math.random()*cidades[cl].length)];
+   const node='NODE-'+Math.floor(Math.random()*1000);
+   const dt=new Date(2025,9,Math.floor(Math.random()*20)+1);
+   const qpre=Math.random()*100;const qpos=qpre+(-10+Math.random()*20);
+   out.push({Cluster:cl,Cidade:ci,Node:node,Data:dt,QOE_Pre:qpre,QOE_Pos:qpos,Tipo_Fechamento:tipos[Math.floor(Math.random()*tipos.length)]});
  }
  return out;
 }
