@@ -239,6 +239,7 @@
     .cluster-row.selected {
       background-color: rgba(76, 175, 80, 0.2) !important;
       font-weight: 600;
+      border-left: 4px solid var(--primary-green);
     }
     
     .back-button {
@@ -465,11 +466,12 @@ function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
 const dropArea=$('#dropArea');
 const fileInput = $('#fileInput');
 
-;['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt,e=>{
+// Eventos de drag and drop
+['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt,e=>{
   e.preventDefault(); 
   dropArea.classList.add('dragover');
 }));
-;['dragleave','drop'].forEach(evt=>dropArea.addEventListener(evt,e=>{
+['dragleave','drop'].forEach(evt=>dropArea.addEventListener(evt,e=>{
   e.preventDefault(); 
   dropArea.classList.remove('dragover');
 }));
@@ -602,8 +604,9 @@ function renderCluster(){
     </tr>`
   ).join('');
   
-  // Adicionar event listeners para as linhas
-  $$('#tblCluster .cluster-row').forEach(row => {
+  // Adicionar event listeners para as linhas - CORREÇÃO AQUI
+  const clusterRows = document.querySelectorAll('#tblCluster .cluster-row');
+  clusterRows.forEach(row => {
     row.addEventListener('click', function() {
       const cluster = this.getAttribute('data-cluster');
       showCidadesPorCluster(cluster);
@@ -615,6 +618,7 @@ function renderCluster(){
 
 /* ================= Mostrar Cidades por Cluster ================= */
 function showCidadesPorCluster(cluster) {
+  console.log('Mostrando cidades para o cluster:', cluster);
   selectedCluster = cluster;
   
   // Filtrar dados pelo cluster selecionado
@@ -640,22 +644,31 @@ function showCidadesPorCluster(cluster) {
   $('#tituloCidade').text(`Incidentes por Cidade - Cluster: ${cluster}`);
   
   // Destacar a linha do cluster selecionado
-  $$('#tblCluster .cluster-row').forEach(row => {
+  const clusterRows = document.querySelectorAll('#tblCluster .cluster-row');
+  clusterRows.forEach(row => {
     row.classList.remove('selected');
     if (row.getAttribute('data-cluster') === cluster) {
       row.classList.add('selected');
     }
   });
   
-  // Ativar a aba de cidades - SOLUÇÃO SIMPLIFICADA
+  // Ativar a aba de cidades - SOLUÇÃO SIMPLIFICADA E FUNCIONAL
   const tabCidadeBtn = document.getElementById('tabCidadeBtn');
   if (tabCidadeBtn) {
-    // Primeiro, remover a classe active de todas as abas
-    $$('.nav-link').forEach(link => link.classList.remove('active'));
-    $$('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
+    // Remover classe active de todos os botões de navegação
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.classList.remove('active');
+    });
     
-    // Depois, ativar a aba de cidades
+    // Remover classe active de todos os painéis de conteúdo
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('show', 'active');
+    });
+    
+    // Adicionar classe active ao botão da aba de cidades
     tabCidadeBtn.classList.add('active');
+    
+    // Adicionar classe active ao painel de conteúdo da aba de cidades
     document.getElementById('tabCidade').classList.add('show', 'active');
   }
 }
@@ -824,12 +837,14 @@ function exportTablePDF(title, tableSelector, chartId){
   };
   pdfMake.createPdf(docDef).download(`${title.toLowerCase().replace(/[^a-z0-9]+/g,'_')}.pdf`);
 }
-$('#btnPDFCluster').addEventListener('click',()=>exportTablePDF('Incidentes por Cluster','#tblCluster','chartCluster'));
-$('#btnPDFCidade').addEventListener('click',()=>exportTablePDF('Incidentes por Cidade','#tblCidade','chartCidade'));
-$('#btnPDFQOE').addEventListener('click',()=>exportTablePDF('QOE Pré vs Pós','#tblQoeNode',null));
-$('#btnPDFFechamento').addEventListener('click',()=>exportTablePDF('Tipo de Fechamento','#tblFechamento','chartFechamento'));
-$('#btnPDFReinc').addEventListener('click',()=>exportTablePDF('Log de Reincidência','#tblReinc',null));
-$('#btnPDFResumo').addEventListener('click',()=>{
+
+// Event listeners para botões PDF
+document.getElementById('btnPDFCluster').addEventListener('click',()=>exportTablePDF('Incidentes por Cluster','#tblCluster','chartCluster'));
+document.getElementById('btnPDFCidade').addEventListener('click',()=>exportTablePDF('Incidentes por Cidade','#tblCidade','chartCidade'));
+document.getElementById('btnPDFQOE').addEventListener('click',()=>exportTablePDF('QOE Pré vs Pós','#tblQoeNode',null));
+document.getElementById('btnPDFFechamento').addEventListener('click',()=>exportTablePDF('Tipo de Fechamento','#tblFechamento','chartFechamento'));
+document.getElementById('btnPDFReinc').addEventListener('click',()=>exportTablePDF('Log de Reincidência','#tblReinc',null));
+document.getElementById('btnPDFResumo').addEventListener('click',()=>{
   const byCluster=groupBy(RAW,'Cluster');
   const head=['Cluster','Incidentes','Δ QOE','Taxa Reinc.'];
   const body=Object.entries(byCluster).map(([cl,rows])=>{
@@ -929,17 +944,17 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Botão voltar para clusters
-  $('#btnVoltarCluster').addEventListener('click', function() {
+  document.getElementById('btnVoltarCluster').addEventListener('click', function() {
     // Remover a classe active de todas as abas
-    $$('.nav-link').forEach(link => link.classList.remove('active'));
-    $$('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
     
     // Ativar a aba de clusters
     document.getElementById('tabClusterBtn').classList.add('active');
     document.getElementById('tabCluster').classList.add('show', 'active');
     
     // Remover seleção das linhas
-    $$('#tblCluster .cluster-row').forEach(row => {
+    document.querySelectorAll('#tblCluster .cluster-row').forEach(row => {
       row.classList.remove('selected');
     });
   });
