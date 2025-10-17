@@ -96,20 +96,15 @@
     <!-- ===== MAIN ===== -->
     <main class="col-12 col-md-9 col-lg-10 p-3 p-md-4">
       <div class="tab-content">
-        <!-- INCIDENTES POR CLUSTER -->
+        <!-- INCIDENTES -->
         <section class="tab-pane fade show active" id="tabCluster">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="m-0">Incidentes por Cluster</h5>
-            <button class="btn btn-danger btn-sm" id="btnPDFCluster"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
-          </div>
+          <h5>Incidentes por Cluster</h5>
           <div class="row">
             <div class="col-12 col-lg-5">
-              <div class="table-responsive">
-                <table class="table table-sm" id="tblCluster">
-                  <thead><tr><th>Cluster</th><th class="text-end">Incidentes</th></tr></thead>
-                  <tbody></tbody>
-                </table>
-              </div>
+              <table class="table table-sm" id="tblCluster">
+                <thead><tr><th>Cluster</th><th class="text-end">Incidentes</th></tr></thead>
+                <tbody></tbody>
+              </table>
             </div>
             <div class="col-12 col-lg-7"><div class="chart-wrap"><canvas id="chartCluster"></canvas></div></div>
           </div>
@@ -117,40 +112,28 @@
 
         <!-- QOE -->
         <section class="tab-pane fade" id="tabQOE">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="m-0">QOE Pré vs Pós</h5>
-            <button class="btn btn-danger btn-sm" id="btnPDFQOE"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm" id="tblQoeNode">
-              <thead>
-                <tr>
-                  <th>Node</th><th>Cluster</th><th>Cidade</th>
-                  <th class="text-end"><strong>Pré</strong></th>
-                  <th class="text-end"><strong>Pós</strong></th>
-                  <th class="text-end">Variação</th><th>Status</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <h5>QOE Pré vs Pós</h5>
+          <table class="table table-sm" id="tblQoeNode">
+            <thead><tr>
+              <th>Node</th><th>Cluster</th><th>Cidade</th>
+              <th class="text-end"><strong>Pré</strong></th>
+              <th class="text-end"><strong>Pós</strong></th>
+              <th class="text-end">Variação</th><th>Status</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
         </section>
 
-        <!-- TIPO DE FECHAMENTO -->
+        <!-- FECHAMENTO -->
         <section class="tab-pane fade" id="tabFechamento">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="m-0">Tipo de Fechamento</h5>
-            <button class="btn btn-danger btn-sm" id="btnPDFFechamento"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
-          </div>
+          <h5>Tipo de Fechamento</h5>
           <div class="row">
             <div class="col-12 col-lg-6"><div class="chart-wrap"><canvas id="chartFechamento"></canvas></div></div>
             <div class="col-12 col-lg-6">
-              <div class="table-responsive">
-                <table class="table table-sm" id="tblFechamento">
-                  <thead><tr><th>Tipo</th><th class="text-end">Volume</th><th class="text-end">% </th></tr></thead>
-                  <tbody></tbody>
-                </table>
-              </div>
+              <table class="table table-sm" id="tblFechamento">
+                <thead><tr><th>Tipo</th><th class="text-end">Volume</th><th class="text-end">%</th></tr></thead>
+                <tbody></tbody>
+              </table>
               <div id="legendFechamento" class="mt-2"></div>
             </div>
           </div>
@@ -158,24 +141,16 @@
 
         <!-- REINCIDÊNCIA -->
         <section class="tab-pane fade" id="tabReinc">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="m-0">Log de Reincidência</h5>
-            <button class="btn btn-danger btn-sm" id="btnPDFReinc"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm" id="tblReinc">
-              <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th class="text-center">Ocorrências</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <h5>Log de Reincidência</h5>
+          <table class="table table-sm" id="tblReinc">
+            <thead><tr><th>Node</th><th>Cluster</th><th>Cidade</th><th class="text-center">Ocorrências</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </section>
 
         <!-- DASHBOARD -->
         <section class="tab-pane fade" id="tabResumo">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="m-0">Dashboard Resumo</h5>
-            <button class="btn btn-danger btn-sm" id="btnPDFResumo"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
-          </div>
+          <h5>Dashboard Resumo</h5>
           <div id="cardsResumo" class="row g-3"></div>
         </section>
       </div>
@@ -183,40 +158,23 @@
   </div>
 </div>
 
-<!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-/* ================= Helpers ================= */
 const $$=(s,c=document)=>Array.from(c.querySelectorAll(s));
 const $=(s,c=document)=>c.querySelector(s);
 let DATA_ALL=[], RAW=[], charts={};
 
-const AUTO_MAP={
- 'INCIDENTE':'Tipo_Incidente','CIDADE':'Cidade','CLUSTER':'Cluster',
- 'HI (DATA E HORA INÍCIO)':'Data','NODE':'Node','RET':'RET',
- 'QOE PRÉ':'QOE_Pre','QOE PÓS':'QOE_Pos',
- 'SOLUÇÃO':'Tipo_Fechamento','HF (DATA E HORA FIM)':'Data_Fim',
- 'OBSERVAÇÃO':'Observacao','OUTAGE DE MDU VINCULADO':'Outage_MDU'
-};
+const AUTO_MAP={'INCIDENTE':'Tipo_Incidente','CIDADE':'Cidade','CLUSTER':'Cluster','HI (DATA E HORA INÍCIO)':'Data','NODE':'Node','RET':'RET','QOE PRÉ':'QOE_Pre','QOE PÓS':'QOE_Pos','SOLUÇÃO':'Tipo_Fechamento','HF (DATA E HORA FIM)':'Data_Fim','OBSERVAÇÃO':'Observacao','OUTAGE DE MDU VINCULADO':'Outage_MDU'};
 
-/* ================= Upload / Demo ================= */
-$('#inputFile').addEventListener('change',e=>{
-  const f=e.target.files?.[0]; if(f) handleFile(f);
-});
-const dropArea=$('#dropArea');
-;['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt,e=>{
-  e.preventDefault(); dropArea.classList.add('dragover');
-}));
-;['dragleave','drop'].forEach(evt=>dropArea.addEventListener(evt,e=>{
-  e.preventDefault(); dropArea.classList.remove('dragover');
-}));
-dropArea.addEventListener('drop',e=>{
-  const f=e.dataTransfer.files?.[0]; if(f) handleFile(f);
-});
-$('#btnDemo').addEventListener('click',()=>{
-  DATA_ALL=makeDemoData(); RAW=[...DATA_ALL]; preencherFiltros();
-  alert(`✅ ${RAW.length} incidentes carregados (DEMO)`); renderAll();
-});
+function safeVarPct(qpre,qpos){
+  if(!isFinite(qpre)||qpre<=0) return 0;
+  return ((qpos - qpre)/qpre)*100;
+}
+
+function fmtPct(n){
+  if(!isFinite(n) || Math.abs(n)>1000) return '—';
+  return `${n.toFixed(1)}%`;
+}
 
 function handleFile(file){
   const reader=new FileReader();
@@ -225,164 +183,49 @@ function handleFile(file){
     const wb=XLSX.read(data,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     let json=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
-    const header=(json[0]||[]).map(h=>String(h).trim());
+    const header=json[0].map(h=>String(h).trim());
     const mappedHeader=header.map(h=>AUTO_MAP[h.toUpperCase()]||h);
-
     const rows=json.slice(1).map(r=>{
-      const o={}; mappedHeader.forEach((h,i)=>o[h]=r[i]);
+      const o={};mappedHeader.forEach((h,i)=>o[h]=r[i]);
       if(o['Data']) o['Data']=new Date(o['Data']);
-      if(o['QOE_Pre']!=='') o['QOE_Pre']=Number(o['QOE_Pre']);
-      if(o['QOE_Pos']!=='') o['QOE_Pos']=Number(o['QOE_Pos']);
-      ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento'].forEach(k=>o[k]=String(o[k]||'').trim());
+      o['QOE_Pre']=Number(o['QOE_Pre'])||0;
+      o['QOE_Pos']=Number(o['QOE_Pos'])||0;
       return o;
     });
-    DATA_ALL=rows; RAW=[...rows]; preencherFiltros();
-    alert(`✅ ${rows.length} incidentes carregados com sucesso`);
-    renderAll();
+    DATA_ALL=rows;RAW=[...rows];
+    preencherFiltros();renderAll();
+    alert(`✅ ${rows.length} incidentes carregados`);
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ================= Filtros ================= */
-function preencherFiltros(){
-  const clusters=[...new Set(DATA_ALL.map(r=>r.Cluster).filter(Boolean))].sort();
-  $('#filtroCluster').innerHTML = '<option value="">Todos</option>' +
-     clusters.map(c=>`<option value="${c}">${c}</option>`).join('');
-  atualizarFiltroCidade();
-}
-$('#filtroCluster').addEventListener('change', atualizarFiltroCidade);
-function atualizarFiltroCidade(){
-  const cSel=$('#filtroCluster').value;
-  const cidades=[...new Set(
-    DATA_ALL.filter(r=>!cSel || r.Cluster===cSel).map(r=>r.Cidade).filter(Boolean)
-  )].sort();
-  $('#filtroCidade').innerHTML = '<option value="">Todas</option>' +
-    cidades.map(c=>`<option value="${c}">${c}</option>`).join('');
-}
-$('#btnAplicarFiltros').addEventListener('click', aplicarFiltros);
-$('#btnLimparFiltros').addEventListener('click', ()=>{
-  $('#filtroCluster').value=''; $('#filtroCidade').value='';
-  $('#filtroDataIni').value=''; $('#filtroDataFim').value='';
-  RAW=[...DATA_ALL]; renderAll();
-});
-function aplicarFiltros(){
-  const cl=$('#filtroCluster').value, ci=$('#filtroCidade').value;
-  const di=$('#filtroDataIni').value? new Date($('#filtroDataIni').value): null;
-  const df=$('#filtroDataFim').value? new Date($('#filtroDataFim').value): null;
-  RAW=DATA_ALL.filter(r=>{
-    let ok=true;
-    if(cl) ok = ok && r.Cluster===cl;
-    if(ci) ok = ok && r.Cidade===ci;
-    if(di) ok = ok && r.Data && r.Data >= di;
-    if(df){ const end=new Date(df); end.setHours(23,59,59,999); ok = ok && r.Data && r.Data <= end; }
-    return ok;
-  });
-  renderAll();
-}
-
-/* ================= QOE ================= */
 function colorByValue(v){
   if(!isFinite(v)) return '';
-  if(v <= 40) return 'text-danger fw-bold';
-  if(v <= 80) return 'text-warning fw-bold';
+  if(v<=40) return 'text-danger fw-bold';
+  if(v<=80) return 'text-warning fw-bold';
   return 'text-success fw-bold';
 }
-function rowQoeHtml(r){
-  const arrow = r.varPct > 1
-    ? '<span class="text-success fw-bold"><i class="bi bi-arrow-up"></i></span>'
-    : '<span class="text-danger fw-bold"><i class="bi bi-arrow-down"></i></span>';
-  const statusClass = r.varPct > 1 ? 'text-success fw-bold' : 'text-danger fw-bold';
-  const status = r.varPct > 1 ? 'Melhoria' : 'Piora/Estável';
-  return `<tr>
-    <td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td>
-    <td class="text-end ${colorByValue(r.qoePre)}">${fmtNum(r.qoePre)}</td>
-    <td class="text-end ${colorByValue(r.qoePos)}">${fmtNum(r.qoePos)}</td>
-    <td class="text-end">${arrow} ${fmtPct(r.varPct)}</td>
-    <td class="${statusClass}">${status}</td>
-  </tr>`;
-}
-function aggregateQoe(rows, keys){
+
+function aggregateQoe(rows,keys){
   const map=new Map();
   rows.forEach(r=>{
-    const k = keys.map(k=>r[k]||'').join('||');
-    const acc = map.get(k) || {cnt:0,qpre:0,qpos:0,Node:r.Node||'',Cluster:r.Cluster||'',Cidade:r.Cidade||''};
-    acc.cnt++; acc.qpre += isFinite(r.QOE_Pre)? r.QOE_Pre:0; acc.qpos += isFinite(r.QOE_Pos)? r.QOE_Pos:0;
-    map.set(k, acc);
+    const k=keys.map(k=>r[k]||'').join('||');
+    const acc=map.get(k)||{cnt:0,qpre:0,qpos:0,Node:r.Node||'',Cluster:r.Cluster||'',Cidade:r.Cidade||''};
+    acc.cnt++;acc.qpre+=r.QOE_Pre||0;acc.qpos+=r.QOE_Pos||0;
+    map.set(k,acc);
   });
   return Array.from(map.values()).map(v=>{
-    const pre=v.cnt? v.qpre/v.cnt:0, pos=v.cnt? v.qpos/v.cnt:0;
-    return {...v, qoePre:pre, qoePos:pos, varPct: pre? ((pos-pre)/pre*100):0};
+    const pre=v.cnt?v.qpre/v.cnt:0;
+    const pos=v.cnt?v.qpos/v.cnt:0;
+    return {...v,qoePre:pre,qoePos:pos,varPct:safeVarPct(pre,pos)};
   });
 }
 
-/* ================= Render ================= */
-function renderAll(){ renderCluster(); renderQoe(); renderFechamento(); renderReinc(); renderResumo(); }
-
-/* --- Incidentes por Cluster --- */
-function renderCluster(){
-  const grp=countBy(RAW,'Cluster');
-  const arr=Object.entries(grp).map(([k,v])=>({Cluster:k||'(vazio)',Inc:v}))
-              .sort((a,b)=>b.Inc-a.Inc);
-  $('#tblCluster tbody').innerHTML = arr.map(r=>`<tr><td>${r.Cluster}</td><td class="text-end">${r.Inc}</td></tr>`).join('');
-  upsertBar('chartCluster','Incidentes',arr.map(r=>r.Cluster),arr.map(r=>r.Inc),{indexAxis:'y'});
-}
-
-/* --- QOE --- */
-function renderQoe(){
-  const byNode=aggregateQoe(RAW,['Node','Cluster','Cidade']);
-  $('#tblQoeNode tbody').innerHTML = byNode.map(rowQoeHtml).join('');
-}
-
-/* --- Tipo de Fechamento --- */
-function renderFechamento(){
-  const grp=countBy(RAW,'Tipo_Fechamento');
-  const total=Object.values(grp).reduce((a,b)=>a+b,0)||1;
-  const arr=Object.entries(grp).map(([t,v])=>({t,v})).sort((a,b)=>b.v-a.v);
-  $('#tblFechamento tbody').innerHTML = arr.map(e=>`<tr>
-    <td>${e.t||'(vazio)'}</td><td class="text-end">${e.v}</td><td class="text-end">${fmtPct((e.v/total)*100)}</td>
-  </tr>`).join('');
-  upsertPie('chartFechamento',arr.map(e=>e.t||'(vazio)'),arr.map(e=>e.v));
-  const colors=charts['chartFechamento']?.data.datasets[0].backgroundColor||[];
-  $('#legendFechamento').innerHTML = arr.map((e,i)=>`<span class="legend-dot" style="background:${colors[i]||'#999'}"></span>${e.t||'(vazio)'}`).join('<br>');
-}
-
-/* --- Reincidência com detalhes (sem data/hora) --- */
-function renderReinc(){
-  const byNode=groupBy(RAW,'Node');
-  const reinc = Object.entries(byNode)
-    .filter(([_,list])=>list.length>1)
-    .map(([n,l])=>({
-      Node:n, Cluster:l[0].Cluster, Cidade:l[0].Cidade, Count:l.length,
-      Incidents: l.map(x=>({ id:x.Tipo_Incidente, solucao:x.Tipo_Fechamento }))
-    }))
-    .sort((a,b)=>b.Count-a.Count);
-
-  const tbody=$('#tblReinc tbody'); tbody.innerHTML='';
-  reinc.forEach(r=>{
-    const tr=document.createElement('tr'); tr.className='pointer';
-    tr.innerHTML = `
-      <td>${r.Node}</td><td>${r.Cluster}</td><td>${r.Cidade}</td>
-      <td class="fw-bold text-center">${r.Count}</td>`;
-    tr.addEventListener('click',()=>toggleDetalhesNode(tr,r));
-    tbody.appendChild(tr);
-  });
-}
-function toggleDetalhesNode(tr, nodeData){
-  if(tr.nextSibling && tr.nextSibling.classList.contains('details-row')){ tr.nextSibling.remove(); return; }
-  $$('#tblReinc .details-row').forEach(el=>el.remove());
-  const details=document.createElement('tr'); details.className='details-row bg-light';
-  details.innerHTML = `<td colspan="4">
-    <ul class="mb-0 list-unstyled">
-      ${nodeData.Incidents.map(inc=>`<li><strong>${inc.id}</strong> - ${inc.solucao||'Sem solução'}</li>`).join('')}
-    </ul>
-  </td>`;
-  tr.insertAdjacentElement('afterend', details);
-}
-
-/* --- Dashboard --- */
+// renderResumo corrigido
 function renderResumo(){
   const byCluster=groupBy(RAW,'Cluster');
-  const wrap=$('#cardsResumo'); wrap.innerHTML='';
+  const wrap=$('#cardsResumo');
+  wrap.innerHTML='';
   Object.entries(byCluster).forEach(([cl,rows])=>{
     const total=rows.length;
     const nodes=groupBy(rows,'Node');
@@ -391,112 +234,14 @@ function renderResumo(){
     const varPct=aggregateQoe(rows,['Cluster'])[0]?.varPct||0;
     const qClass=varPct>0?'text-success fw-bold':'text-danger fw-bold';
     const rClass=taxa>20?'text-danger':'text-success';
-
-    const card=document.createElement('div'); card.className='col-12 col-md-6 col-lg-4';
-    card.innerHTML = `
-      <div class="card h-100 shadow-sm border-0">
-        <div class="card-body">
-          <h5 class="mb-2">${cl||'(vazio)'}</h5>
-          <p class="mb-1"><strong>${total}</strong> incidentes</p>
-          <p class="mb-1">Δ QOE: <span class="${qClass}">${fmtPct(varPct)}</span></p>
-          <p class="mb-0">Taxa Reinc.: <span class="${rClass}">${fmtPct(taxa)}</span></p>
-        </div>
-      </div>`;
+    const card=document.createElement('div');
+    card.className='col-12 col-md-6 col-lg-4';
+    card.innerHTML=`<div class="card h-100 shadow-sm border-0"><div class="card-body"><h5>${cl||'(vazio)'}</h5><p><strong>${total}</strong> incidentes</p><p>Δ QOE: <span class="${qClass}">${fmtPct(varPct)}</span></p><p>Taxa Reinc.: <span class="${rClass}">${fmtPct(taxa)}</span></p></div></div>`;
     wrap.appendChild(card);
   });
 }
 
-/* ================= Charts ================= */
-function upsertBar(id,label,labels,data,extra){
-  const ctx=document.getElementById(id);
-  if(charts[id]) charts[id].destroy();
-  charts[id]=new Chart(ctx,{
-    type:'bar',
-    data:{ labels, datasets:[{ label, data }] },
-    options:Object.assign({ responsive:true, plugins:{ legend:{ display:false } } }, extra||{})
-  });
-}
-function upsertPie(id,labels,data){
-  const ctx=document.getElementById(id);
-  if(charts[id]) charts[id].destroy();
-  charts[id]=new Chart(ctx,{ type:'pie', data:{ labels, datasets:[{ data }] }, options:{ responsive:true } });
-}
-
-/* ================= PDF ================= */
-function exportTablePDF(title, tableSelector, chartId){
-  const table=$(tableSelector);
-  const head=Array.from(table.querySelectorAll('thead th')).map(th=>th.innerText);
-  const rows=Array.from(table.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.children).map(td=>td.innerText));
-
-  let img=null;
-  if(chartId && charts[chartId]) img = charts[chartId].toBase64Image();
-
-  const docDef={
-    pageSize:'A4', pageMargins:[24,24,24,24],
-    content:[
-      { text:title, style:'title' },
-      { text:new Date().toLocaleString(), style:'sub', margin:[0,0,0,6] },
-      img ? { image:img, width:480, margin:[0,0,0,12] } : {},
-      { table:{ headerRows:1, widths:head.map(()=>'*'), body:[ head, ...rows ] }, layout:'lightHorizontalLines' }
-    ],
-    styles:{ title:{fontSize:16,bold:true}, sub:{fontSize:9,color:'#666'} }
-  };
-  pdfMake.createPdf(docDef).download(`${title.toLowerCase().replace(/[^a-z0-9]+/g,'_')}.pdf`);
-}
-$('#btnPDFCluster').addEventListener('click',()=>exportTablePDF('Incidentes por Cluster','#tblCluster','chartCluster'));
-$('#btnPDFQOE').addEventListener('click',()=>exportTablePDF('QOE Pré vs Pós','#tblQoeNode',null));
-$('#btnPDFFechamento').addEventListener('click',()=>exportTablePDF('Tipo de Fechamento','#tblFechamento','chartFechamento'));
-$('#btnPDFReinc').addEventListener('click',()=>exportTablePDF('Log de Reincidência','#tblReinc',null));
-$('#btnPDFResumo').addEventListener('click',()=>{
-  // monta uma mini-tabela do dashboard
-  const byCluster=groupBy(RAW,'Cluster');
-  const head=['Cluster','Incidentes','Δ QOE','Taxa Reinc.'];
-  const body=Object.entries(byCluster).map(([cl,rows])=>{
-    const total=rows.length, nodes=groupBy(rows,'Node');
-    const reinc=Object.values(nodes).filter(a=>a.length>1).length;
-    const taxa=total?(reinc/Object.keys(nodes).length*100):0;
-    const varPct=aggregateQoe(rows,['Cluster'])[0]?.varPct||0;
-    return [ cl||'(vazio)', String(total), fmtPct(varPct), fmtPct(taxa) ];
-  });
-  const docDef={ pageSize:'A4', pageMargins:[24,24,24,24],
-    content:[
-      { text:'Dashboard Resumo', style:'title' },
-      { text:new Date().toLocaleString(), style:'sub', margin:[0,0,0,6] },
-      { table:{ headerRows:1, widths:['*','auto','auto','auto'], body:[ head, ...body ] }, layout:'lightHorizontalLines' }
-    ],
-    styles:{ title:{fontSize:16,bold:true}, sub:{fontSize:9,color:'#666'} }
-  };
-  pdfMake.createPdf(docDef).download('dashboard_resumo.pdf');
-});
-
-/* ================= Utils ================= */
-function groupBy(a,k){ return a.reduce((acc,c)=>{ const key=c[k]||''; (acc[key]||(acc[key]=[])).push(c); return acc; },{}); }
-function countBy(a,k){ return a.reduce((acc,c)=>{ const key=c[k]||''; acc[key]=(acc[key]||0)+1; return acc; },{}); }
-function fmtPct(n){ return isFinite(n)? `${n.toFixed(1)}%` : '—'; }
-function fmtNum(n){ return isFinite(n)? n.toFixed(1) : '—'; }
-
-/* ================= Demo generator ================= */
-function makeDemoData(){
-  const clusters=['RJ','SP','MG','ES'];
-  const cidades={ RJ:['RIO DE JANEIRO','NITEROI'], SP:['SÃO PAULO','SANTOS'], MG:['BELO HORIZONTE'], ES:['VILA VELHA'] };
-  const tipos=['MDU FILTRADO','SDU FILTRADO','NORMALIZADO SEM INTERVENÇÃO','CLEARDATE'];
-  const out=[];
-  for(let i=0;i<90;i++){
-    const cl=clusters[Math.floor(Math.random()*clusters.length)];
-    const ci=cidades[cl][Math.floor(Math.random()*cidades[cl].length)];
-    const node='NODE-'+(100+Math.floor(Math.random()*900));
-    const dt=new Date(2025,9,1+Math.floor(Math.random()*14), 6+Math.floor(Math.random()*12), Math.floor(Math.random()*60));
-    const pre=Math.round(20+Math.random()*70);
-    const pos=Math.round(pre + (-10 + Math.random()*30));
-    out.push({
-      Cluster:cl, Cidade:ci, Node:node, Data:dt,
-      Tipo_Incidente:'INM'+(10000000+i),
-      Tipo_Fechamento:tipos[Math.floor(Math.random()*tipos.length)],
-      QOE_Pre:pre, QOE_Pos:pos
-    });
-  }
-  return out;
-}
+function groupBy(a,k){return a.reduce((acc,c)=>{const key=c[k]||'';(acc[key]||(acc[key]=[])).push(c);return acc;},{});}
 </script>
 </body>
 </html>
