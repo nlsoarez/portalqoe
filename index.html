@@ -227,6 +227,24 @@
       height: 1.5rem;
     }
     
+    .cluster-row {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .cluster-row:hover {
+      background-color: rgba(76, 175, 80, 0.1) !important;
+    }
+    
+    .cluster-row.selected {
+      background-color: rgba(76, 175, 80, 0.2) !important;
+      font-weight: 600;
+    }
+    
+    .back-button {
+      margin-bottom: 15px;
+    }
+    
     @media (max-width: 768px) {
       .sidebar {
         min-height: auto;
@@ -264,7 +282,6 @@
       <hr class="my-4"/>
       <div class="nav flex-column gap-1" role="tablist">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCluster" type="button"><i class="bi bi-diagram-3"></i> Incidentes por Cluster</button>
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCidade" type="button"><i class="bi bi-geo-alt"></i> Incidentes por Cidade</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQOE" type="button"><i class="bi bi-arrow-left-right"></i> QOE Pré vs Pós</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFechamento" type="button"><i class="bi bi-pie-chart"></i> Tipo de Fechamento</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReinc" type="button"><i class="bi bi-clock-history"></i> Reincidência</button>
@@ -303,7 +320,12 @@
         <!-- INCIDENTES POR CIDADE -->
         <section class="tab-pane fade" id="tabCidade">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="m-0 section-title">Incidentes por Cidade</h5>
+            <div>
+              <button class="btn btn-outline-secondary btn-sm back-button" id="btnVoltarCluster">
+                <i class="bi bi-arrow-left"></i> Voltar para Clusters
+              </button>
+              <h5 class="m-0 section-title" id="tituloCidade">Incidentes por Cidade</h5>
+            </div>
             <button class="btn btn-primary btn-sm" id="btnPDFCidade"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
           </div>
           <div class="row">
@@ -408,6 +430,7 @@
 const $$=(s,c=document)=>Array.from(c.querySelectorAll(s));
 const $=(s,c=document)=>c.querySelector(s);
 let DATA_ALL=[], RAW=[], charts={};
+let selectedCluster = null;
 
 /* ================= Mapeamento flexível de cabeçalhos ================= */
 const AUTO_MAP={
@@ -569,16 +592,63 @@ function renderQoe(){
 function renderCluster(){
   const grp={}; RAW.forEach(r=>{grp[r.Cluster]=(grp[r.Cluster]||0)+1});
   const arr=Object.entries(grp).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
-  $('#tblCluster tbody').innerHTML=arr.map(({c,v})=>`<tr><td>${c||'(vazio)'}</td><td class="text-end">${v}</td></tr>`).join('');
+  
+  const tbody = $('#tblCluster tbody');
+  tbody.innerHTML = arr.map(({c,v}) => 
+    `<tr class="cluster-row" data-cluster="${c}">
+      <td>${c||'(vazio)'}</td>
+      <td class="text-end">${v}</td>
+    </tr>`
+  ).join('');
+  
+  // Adicionar event listeners para as linhas
+  $$('#tblCluster .cluster-row').forEach(row => {
+    row.addEventListener('click', function() {
+      const cluster = this.getAttribute('data-cluster');
+      showCidadesPorCluster(cluster);
+    });
+  });
+  
   upsertBar('chartCluster','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
 }
 
-/* ================= Incidentes por Cidade ================= */
-function renderCidade(){
-  const grp={}; RAW.forEach(r=>{grp[r.Cidade]=(grp[r.Cidade]||0)+1});
-  const arr=Object.entries(grp).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
-  $('#tblCidade tbody').innerHTML=arr.map(({c,v})=>`<tr><td>${c||'(vazio)'}</td><td class="text-end">${v}</td></tr>`).join('');
+/* ================= Mostrar Cidades por Cluster ================= */
+function showCidadesPorCluster(cluster) {
+  selectedCluster = cluster;
+  
+  // Filtrar dados pelo cluster selecionado
+  const filteredData = RAW.filter(r => r.Cluster === cluster);
+  
+  // Agrupar por cidade
+  const grp = {};
+  filteredData.forEach(r => { grp[r.Cidade] = (grp[r.Cidade] || 0) + 1 });
+  const arr = Object.entries(grp).map(([c,v]) => ({c,v})).sort((a,b) => b.v - a.v);
+  
+  // Atualizar tabela de cidades
+  $('#tblCidade tbody').innerHTML = arr.map(({c,v}) => 
+    `<tr>
+      <td>${c||'(vazio)'}</td>
+      <td class="text-end">${v}</td>
+    </tr>`
+  ).join('');
+  
+  // Atualizar gráfico de cidades
   upsertBar('chartCidade','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
+  
+  // Atualizar título
+  $('#tituloCidade').text(`Incidentes por Cidade - Cluster: ${cluster}`);
+  
+  // Mostrar a aba de cidades
+  const tabCidade = new bootstrap.Tab($('#tabCidade'));
+  tabCidade.show();
+  
+  // Destacar a linha do cluster selecionado
+  $$('#tblCluster .cluster-row').forEach(row => {
+    row.classList.remove('selected');
+    if (row.getAttribute('data-cluster') === cluster) {
+      row.classList.add('selected');
+    }
+  });
 }
 
 /* ================= Tipo de Fechamento ================= */
@@ -835,7 +905,6 @@ function showToast(message, type = 'info') {
 /* ================= Render inicial ================= */
 function renderAll(){ 
   renderCluster(); 
-  renderCidade();
   renderQoe(); 
   renderFechamento(); 
   renderReinc(); 
@@ -848,6 +917,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+  
+  // Botão voltar para clusters
+  $('#btnVoltarCluster').addEventListener('click', function() {
+    const tabCluster = new bootstrap.Tab($('#tabCluster'));
+    tabCluster.show();
   });
 });
 </script>
