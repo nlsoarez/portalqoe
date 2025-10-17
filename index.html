@@ -245,8 +245,7 @@
   <div class="container-fluid d-flex justify-content-between align-items-center">
     <h1 class="h4 m-0"><span class="brand-dot"></span>Portal de Análise de Incidentes</h1>
     <div class="d-flex gap-2">
-      <input id="inputFile" type="file" class="form-control form-control-sm" accept=".xlsx,.xls,.csv"/>
-      <button id="btnDemo" class="btn btn-outline-light btn-sm" title="Carrega dados de demonstração"><i class="bi bi-magic"></i> Demo</button>
+      <!-- Upload removido do header -->
     </div>
   </div>
 </header>
@@ -259,11 +258,13 @@
         <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
         <p class="mb-1">Arraste e solte sua planilha aqui</p>
         <span class="small-note text-muted">Suporta XLSX, XLS e CSV</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
       </div>
 
       <hr class="my-4"/>
       <div class="nav flex-column gap-1" role="tablist">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCluster" type="button"><i class="bi bi-diagram-3"></i> Incidentes por Cluster</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCidade" type="button"><i class="bi bi-geo-alt"></i> Incidentes por Cidade</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQOE" type="button"><i class="bi bi-arrow-left-right"></i> QOE Pré vs Pós</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFechamento" type="button"><i class="bi bi-pie-chart"></i> Tipo de Fechamento</button>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReinc" type="button"><i class="bi bi-clock-history"></i> Reincidência</button>
@@ -274,7 +275,7 @@
     <!-- ===== MAIN ===== -->
     <main class="col-12 col-md-9 col-lg-10 p-3 p-md-4">
       <div class="tab-content">
-        <!-- INCIDENTES -->
+        <!-- INCIDENTES POR CLUSTER -->
         <section class="tab-pane fade show active" id="tabCluster">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="m-0 section-title">Incidentes por Cluster</h5>
@@ -294,6 +295,31 @@
             <div class="col-12 col-lg-7">
               <div class="chart-wrap">
                 <canvas id="chartCluster"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INCIDENTES POR CIDADE -->
+        <section class="tab-pane fade" id="tabCidade">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="m-0 section-title">Incidentes por Cidade</h5>
+            <button class="btn btn-primary btn-sm" id="btnPDFCidade"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+          </div>
+          <div class="row">
+            <div class="col-12 col-lg-5">
+              <div class="card-custom p-3">
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover" id="tblCidade">
+                    <thead class="table-light"><tr><th>Cidade</th><th class="text-end">Incidentes</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-7">
+              <div class="chart-wrap">
+                <canvas id="chartCidade"></canvas>
               </div>
             </div>
           </div>
@@ -412,18 +438,9 @@ function fmtPct(n){
 function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
 
 /* ================= Upload / Demo ================= */
-$('#inputFile').addEventListener('change',e=>{
-  const f=e.target.files?.[0]; 
-  if(f) {
-    showLoading();
-    setTimeout(() => {
-      handleFile(f);
-      hideLoading();
-    }, 500);
-  }
-});
-
 const dropArea=$('#dropArea');
+const fileInput = $('#fileInput');
+
 ;['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt,e=>{
   e.preventDefault(); 
   dropArea.classList.add('dragover');
@@ -443,15 +460,20 @@ dropArea.addEventListener('drop',e=>{
   }
 });
 
-$('#btnDemo').addEventListener('click',()=>{
-  showLoading();
-  setTimeout(() => {
-    DATA_ALL=makeDemoData(); 
-    RAW=[...DATA_ALL]; 
-    renderAll(); 
-    showToast(`✅ ${RAW.length} incidentes carregados (DEMO)`, 'success');
-    hideLoading();
-  }, 800);
+// Adicionar clique na área de upload para abrir o seletor de arquivos
+dropArea.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change',e=>{
+  const f=e.target.files?.[0]; 
+  if(f) {
+    showLoading();
+    setTimeout(() => {
+      handleFile(f);
+      hideLoading();
+    }, 500);
+  }
 });
 
 /* ================= Leitura robusta da planilha ================= */
@@ -549,6 +571,14 @@ function renderCluster(){
   const arr=Object.entries(grp).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
   $('#tblCluster tbody').innerHTML=arr.map(({c,v})=>`<tr><td>${c||'(vazio)'}</td><td class="text-end">${v}</td></tr>`).join('');
   upsertBar('chartCluster','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
+}
+
+/* ================= Incidentes por Cidade ================= */
+function renderCidade(){
+  const grp={}; RAW.forEach(r=>{grp[r.Cidade]=(grp[r.Cidade]||0)+1});
+  const arr=Object.entries(grp).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
+  $('#tblCidade tbody').innerHTML=arr.map(({c,v})=>`<tr><td>${c||'(vazio)'}</td><td class="text-end">${v}</td></tr>`).join('');
+  upsertBar('chartCidade','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{indexAxis:'y'});
 }
 
 /* ================= Tipo de Fechamento ================= */
@@ -716,6 +746,7 @@ function exportTablePDF(title, tableSelector, chartId){
   pdfMake.createPdf(docDef).download(`${title.toLowerCase().replace(/[^a-z0-9]+/g,'_')}.pdf`);
 }
 $('#btnPDFCluster').addEventListener('click',()=>exportTablePDF('Incidentes por Cluster','#tblCluster','chartCluster'));
+$('#btnPDFCidade').addEventListener('click',()=>exportTablePDF('Incidentes por Cidade','#tblCidade','chartCidade'));
 $('#btnPDFQOE').addEventListener('click',()=>exportTablePDF('QOE Pré vs Pós','#tblQoeNode',null));
 $('#btnPDFFechamento').addEventListener('click',()=>exportTablePDF('Tipo de Fechamento','#tblFechamento','chartFechamento'));
 $('#btnPDFReinc').addEventListener('click',()=>exportTablePDF('Log de Reincidência','#tblReinc',null));
@@ -742,29 +773,6 @@ $('#btnPDFResumo').addEventListener('click',()=>{
 
 /* ================= Utils ================= */
 function groupBy(a,k){ return a.reduce((acc,c)=>{ const key=c[k]||''; (acc[key]||(acc[key]=[])).push(c); return acc; },{}); }
-
-/* ================= Demo generator ================= */
-function makeDemoData(){
-  const clusters=['RJ','SP','MG','ES'];
-  const cidades={ RJ:['RIO DE JANEIRO','NITEROI'], SP:['SÃO PAULO','SANTOS'], MG:['BELO HORIZONTE'], ES:['VILA VELHA'] };
-  const tipos=['MDU FILTRADO','SDU FILTRADO','NORMALIZADO SEM INTERVENÇÃO','CLEARDATE'];
-  const out=[];
-  for(let i=0;i<90;i++){
-    const cl=clusters[Math.floor(Math.random()*clusters.length)];
-    const ci=cidades[cl][Math.floor(Math.random()*cidades[cl].length)];
-    const node='NODE-'+(100+Math.floor(Math.random()*900));
-    const dt=new Date(2025,9,1+Math.floor(Math.random()*14), 6+Math.floor(Math.random()*12), Math.floor(Math.random()*60));
-    const pre=Math.round(20+Math.random()*70);
-    const pos=Math.round(pre + (-10 + Math.random()*30));
-    out.push({
-      Cluster:cl, Cidade:ci, Node:node, Data:dt,
-      Tipo_Incidente:'INM'+(10000000+i),
-      Tipo_Fechamento:tipos[Math.floor(Math.random()*tipos.length)],
-      QOE_Pre:pre, QOE_Pos:pos
-    });
-  }
-  return out;
-}
 
 /* ================= UI Helpers ================= */
 function showLoading() {
@@ -827,6 +835,7 @@ function showToast(message, type = 'info') {
 /* ================= Render inicial ================= */
 function renderAll(){ 
   renderCluster(); 
+  renderCidade();
   renderQoe(); 
   renderFechamento(); 
   renderReinc(); 
@@ -835,11 +844,6 @@ function renderAll(){
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
-  // Add click handler to drop area to trigger file input
-  dropArea.addEventListener('click', () => {
-    $('#inputFile').click();
-  });
-  
   // Initialize tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
