@@ -1,7 +1,3 @@
-<!-- ==========================
-     PORTAL DE ANÁLISE DE INCIDENTES
-     PARTE 1/2 - Estrutura HTML + Estilos + Layout
-========================== -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -20,13 +16,14 @@
   <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.10/build/pdfmake.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.10/build/vfs_fonts.js"></script>
   <style>
+    /* ====== Estilo Global / Cores Claro Brasil ====== */
     :root {
       --claro-red: #e30613;
       --claro-dark: #1a1a1a;
-      --claro-green: #29a329;
-      --claro-yellow: #e3a81e;
+      --claro-green: #29a329; /* melhoria */
+      --claro-yellow: #e3a81e; /* estável */
       --claro-blue: #0066cc;
-      --claro-danger: #d62828;
+      --claro-danger: #d62828; /* piora */
       --bg-soft: #f7f7f7;
     }
     body { background: var(--bg-soft); }
@@ -59,6 +56,7 @@
   </style>
 </head>
 <body>
+  <!-- ====== HEADER ====== -->
   <header class="app-header py-3">
     <div class="container-fluid">
       <div class="d-flex align-items-center justify-content-between">
@@ -74,185 +72,833 @@
     </div>
   </header>
 
-  <!--
-    ========================
-    AQUI FICA TODA A ESTRUTURA DE LAYOUT, SIDEBAR, TABS, TABELAS E GRÁFICOS
-    ========================
-    (Conteúdo igual ao da versão original, mantido na PARTE 1)
-  -->
+  <div class="container-fluid">
+    <div class="row">
+      <!-- ====== SIDEBAR ====== -->
+      <nav class="col-12 col-md-3 col-lg-2 sidebar p-3">
+        <div class="mb-4">
+          <div class="upload-drop" id="dropArea">
+            <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
+            <p class="mb-1">Arraste e solte sua planilha aqui</p>
+            <span class="small-note">Ou clique no campo de upload acima</span>
+          </div>
+        </div>
+        <h6 class="text-uppercase text-muted">Navegação</h6>
+        <div class="nav flex-column gap-1" id="sideTabs" role="tablist">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCluster" type="button" role="tab"><i class="bi bi-diagram-3"></i> Incidentes por Cluster</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQOE" type="button" role="tab"><i class="bi bi-arrow-left-right"></i> QOE Pré vs Pós</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFechamento" type="button" role="tab"><i class="bi bi-pie-chart"></i> Tipo de Fechamento</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReinc" type="button" role="tab"><i class="bi bi-clock-history"></i> Log de Reincidência</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabResumo" type="button" role="tab"><i class="bi bi-speedometer2"></i> Dashboard por Cluster</button>
+          <hr>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSobre" type="button" role="tab"><i class="bi bi-info-circle"></i> Sobre/Help</button>
+        </div>
 
-<!-- ==========================
-     PORTAL DE ANÁLISE DE INCIDENTES
-     PARTE 2/2 - Scripts e Lógica JS
-========================== -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// =========================
-// Utilidades
-// =========================
-const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-const $ = (sel, ctx=document) => ctx.querySelector(sel);
-let RAW = [];
-let DATA_ALL = [];
-let charts = {};
+        <!-- Filtros Globais -->
+        <hr class="my-4" />
+        <h6 class="text-uppercase text-muted">Filtros</h6>
+        <div class="mb-2">
+          <label class="form-label">Cluster</label>
+          <select id="filterCluster" class="form-select form-select-sm">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Período</label>
+          <div class="d-flex gap-1">
+            <input id="filterDataIni" type="date" class="form-control form-control-sm" />
+            <input id="filterDataFim" type="date" class="form-control form-control-sm" />
+          </div>
+        </div>
+        <div class="d-grid gap-2">
+          <button id="btnAplicarFiltros" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Aplicar</button>
+          <button id="btnLimparFiltros" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i> Limpar</button>
+        </div>
+      </nav>
 
-// Colunas esperadas
-const EXPECTED = {
-  Cluster: 'Cluster', Node: 'Node', Cidade: 'Cidade',
-  Data: 'Data', Tipo_Incidente: 'Tipo_Incidente', Tipo_Fechamento: 'Tipo_Fechamento',
-  QOE_Pre: 'QOE_Pre', QOE_Pos: 'QOE_Pos', Status_Reincidencia: 'Status_Reincidencia'
-};
+      <!-- ====== MAIN ====== -->
+      <main class="col-12 col-md-9 col-lg-10 p-3 p-md-4">
+        <div class="tab-content">
 
-// Mapeamentos automáticos (inclui acentos e parênteses)
-const AUTO_MAP = {
-  'CLUSTER':'Cluster','CIDADE':'Cidade','NODE':'Node',
-  'HI_INICIO':'Data','HI_(DATA_E_HORA_INICIO)':'Data','HI_DATA_E_HORA_INICIO':'Data',
-  'HF_(DATA_E_HORA_FIM)':'Data_Fim','HF_DATA_E_HORA_FIM':'Data_Fim',
-  'INCIDENTE':'Tipo_Incidente','SOLUCAO':'Tipo_Fechamento','SOLUÇÃO':'Tipo_Fechamento','TIPO_FECHAMENTO':'Tipo_Fechamento',
-  'QOE_PRE':'QOE_Pre','QOE_PRÉ':'QOE_Pre','QOE_POS':'QOE_Pos','QOE_PÓS':'QOE_Pos',
-  'OBSERVACAO':'Observacao','OBSERVAÇÃO':'Observacao','OUTAGE_MDU':'Outage_MDU','OUTAGE_DE_MDU_VINCULADO':'Outage_MDU',
-  'RET':'RET'
-};
+          <!-- ====== TAB: INCIDENTES POR CLUSTER ====== -->
+          <section class="tab-pane fade show active" id="tabCluster" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="m-0">Relatório de Incidentes por Cluster</h5>
+                  <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="Quantidade absoluta de incidentes por cluster e gráfico de distribuição.">Tabela e gráfico com ordenação</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-primary btn-sm" id="btnSortClusterAsc" title="Ordenar crescente"><i class="bi bi-sort-alpha-down"></i></button>
+                  <button class="btn btn-outline-primary btn-sm" id="btnSortClusterDesc" title="Ordenar decrescente"><i class="bi bi-sort-alpha-up"></i></button>
+                  <button class="btn btn-danger btn-sm" id="exportClusterPDF"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12 col-lg-5">
+                    <div class="table-responsive table-sticky" style="max-height: 360px;">
+                      <table class="table table-sm align-middle" id="tblCluster">
+                        <thead>
+                          <tr>
+                            <th>Cluster</th>
+                            <th class="text-end">Incidentes</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="col-12 col-lg-7">
+                    <div class="chart-wrap">
+                      <canvas id="chartCluster"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
-// Tooltips
-const enableTooltips = () => $$('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-document.addEventListener('DOMContentLoaded', enableTooltips);
+          <!-- ====== TAB: QOE PRÉ vs PÓS ====== -->
+          <section class="tab-pane fade" id="tabQOE" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="m-0">Análise Comparativa QOE Pré vs Pós</h5>
+                  <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="Métricas por Node, Cluster e Cidade com variação percentual.">Percentual, status e indicadores visuais</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-danger btn-sm" id="exportQOEPDF"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <ul class="nav nav-pills mb-3" role="tablist">
+                  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#qoeByNode" type="button">Por Node</button></li>
+                  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#qoeByCluster" type="button">Por Cluster</button></li>
+                  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#qoeByCidade" type="button">Por Cidade</button></li>
+                </ul>
+                <div class="tab-content">
+                  <!-- Por Node -->
+                  <div class="tab-pane fade show active" id="qoeByNode">
+                    <div class="table-responsive table-sticky" style="max-height: 420px;">
+                      <table class="table table-sm align-middle" id="tblQoeNode">
+                        <thead>
+                          <tr>
+                            <th>Node</th>
+                            <th>Cluster</th>
+                            <th>Cidade</th>
+                            <th class="text-end">QOE Pré</th>
+                            <th class="text-end">QOE Pós</th>
+                            <th class="text-end">Variação %</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Por Cluster -->
+                  <div class="tab-pane fade" id="qoeByCluster">
+                    <div class="row g-3">
+                      <div class="col-12 col-lg-6">
+                        <div class="table-responsive table-sticky" style="max-height: 420px;">
+                          <table class="table table-sm align-middle" id="tblQoeCluster">
+                            <thead>
+                              <tr>
+                                <th>Cluster</th>
+                                <th class="text-end">QOE Pré</th>
+                                <th class="text-end">QOE Pós</th>
+                                <th class="text-end">Variação %</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody></tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <div class="chart-wrap">
+                          <canvas id="chartQoeCluster"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Por Cidade -->
+                  <div class="tab-pane fade" id="qoeByCidade">
+                    <div class="row g-3">
+                      <div class="col-12 col-lg-6">
+                        <div class="table-responsive table-sticky" style="max-height: 420px;">
+                          <table class="table table-sm align-middle" id="tblQoeCidade">
+                            <thead>
+                              <tr>
+                                <th>Cidade</th>
+                                <th class="text-end">QOE Pré</th>
+                                <th class="text-end">QOE Pós</th>
+                                <th class="text-end">Variação %</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody></tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <div class="chart-wrap">
+                          <canvas id="chartQoeCidade"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
-// Upload Drag & Drop
-const dropArea = $('#dropArea');
-const inputFile = $('#inputFile');
-;['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt,e=>{e.preventDefault();dropArea.classList.add('dragover');}))
-;['dragleave','drop'].forEach(evt=>dropArea.addEventListener(evt,e=>{e.preventDefault();dropArea.classList.remove('dragover');}))
-dropArea.addEventListener('drop', e=>{const file=e.dataTransfer.files?.[0];if(file) handleFile(file);});
-inputFile.addEventListener('change', e=>{const file=e.target.files?.[0];if(file) handleFile(file);});
+          <!-- ====== TAB: TIPO DE FECHAMENTO ====== -->
+          <section class="tab-pane fade" id="tabFechamento" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="m-0">Análise de Tipo de Fechamento</h5>
+                  <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="Distribuição percentual por tipo de fechamento e volumes absolutos.">Pizza + tabela</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-danger btn-sm" id="exportFechamentoPDF"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12 col-lg-6">
+                    <div class="chart-wrap">
+                      <canvas id="chartFechamento"></canvas>
+                    </div>
+                  </div>
+                  <div class="col-12 col-lg-6">
+                    <div class="table-responsive table-sticky" style="max-height: 360px;">
+                      <table class="table table-sm align-middle" id="tblFechamento">
+                        <thead>
+                          <tr>
+                            <th>Tipo de Fechamento</th>
+                            <th class="text-end">Volume</th>
+                            <th class="text-end">%</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                      <div id="legendFechamento" class="mt-2"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
-// Demo
-$('#btnDemo').addEventListener('click',()=>{const demo=makeDemoData();DATA_ALL=demo;RAW=[...DATA_ALL];afterLoad();});
+          <!-- ====== TAB: LOG DE REINCIDÊNCIA ====== -->
+          <section class="tab-pane fade" id="tabReinc" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="m-0">Log de Reincidência de Nodes</h5>
+                  <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="Histórico detalhado por Node com filtros de período e cluster.">Destaque para reincidentes</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-danger btn-sm" id="exportReincPDF"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive table-sticky" style="max-height: 520px;">
+                  <table class="table table-sm align-middle" id="tblReinc">
+                    <thead>
+                      <tr>
+                        <th>Node</th>
+                        <th>Cluster</th>
+                        <th>Cidade</th>
+                        <th>Data</th>
+                        <th>Tipo Incidente</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
 
-// =========================
-// Leitura Planilha (SheetJS)
-// =========================
-function handleFile(file){
-  if(!/(xlsx|xls|csv)$/i.test(file.name)) return alert('Formato inválido');
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const data=new Uint8Array(e.target.result);
-    const wb=XLSX.read(data,{type:'array'});
-    const wsname=wb.SheetNames[0];
-    const ws=wb.Sheets[wsname];
-    let json=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
-    json=normalizeColumns(json);
-    const {rows,errors}=validateAndFix(json);
-    if(errors.length) alert('Aviso de validação:\n'+errors.join('\n'));
-    DATA_ALL=rows;RAW=[...DATA_ALL];afterLoad();
+          <!-- ====== TAB: DASHBOARD RESUMO POR CLUSTER ====== -->
+          <section class="tab-pane fade" id="tabResumo" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="m-0">Dashboard Resumo por Cluster</h5>
+                  <small class="text-muted">Cards com métricas principais e performance comparativa</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-danger btn-sm" id="exportResumoPDF"><i class="bi bi-filetype-pdf"></i> Exportar PDF</button>
+                </div>
+              </div>
+              <div class="card-body" id="cardsResumo" class="row g-3">
+              </div>
+            </div>
+          </section>
+
+          <!-- ====== TAB: SOBRE ====== -->
+          <section class="tab-pane fade" id="tabSobre" role="tabpanel">
+            <div class="card mb-4">
+              <div class="card-header"><h5 class="m-0">Sobre / Help</h5></div>
+              <div class="card-body">
+                <p>Este portal processa planilhas localmente no navegador (client-side) utilizando <strong>SheetJS</strong> para leitura, <strong>Chart.js</strong> para gráficos e <strong>pdfmake</strong> para exportação de relatórios em PDF.</p>
+                <p><strong>Colunas esperadas (validação):</strong></p>
+                <ul>
+                  <li><code>Cluster</code>, <code>Node</code>, <code>Cidade</code></li>
+                  <li><code>Data</code>, <code>Tipo_Incidente</code>, <code>Tipo_Fechamento</code></li>
+                  <li><code>QOE_Pre</code>, <code>QOE_Pos</code></li>
+                  <li><code>Status_Reincidencia</code> (opcional – calculado caso ausente)</li>
+                </ul>
+                <p>Mapeamentos automáticos comuns: <code>HI_INICIO → Data</code>, <code>SOLUCAO → Tipo_Fechamento</code>, <code>INCIDENTE → Tipo_Incidente</code>, <code>QOE_PRE → QOE_Pre</code>, <code>QOE_POS → QOE_Pos</code>.</p>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ====== SCRIPTS ====== -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // =========================
+  // Utilidades
+  // =========================
+  const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+  const $ = (sel, ctx=document) => ctx.querySelector(sel);
+
+  // Estados globais
+  let RAW = [];        // registros filtrados correntes
+  let DATA_ALL = [];   // registros completos (sem filtro)
+  let charts = {};     // refs Chart.js
+
+  // Colunas canônicas esperadas
+  const EXPECTED = {
+    Cluster: 'Cluster',
+    Node: 'Node',
+    Cidade: 'Cidade',
+    Data: 'Data',
+    Tipo_Incidente: 'Tipo_Incidente',
+    Tipo_Fechamento: 'Tipo_Fechamento',
+    QOE_Pre: 'QOE_Pre',
+    QOE_Pos: 'QOE_Pos',
+    Status_Reincidencia: 'Status_Reincidencia' // opcional
   };
-  reader.readAsArrayBuffer(file);
-}
 
-function normalizeColumns(rows){
-  if(!rows.length) return [];
-  const keys=Object.keys(rows[0]);
-  const badKeys=keys.filter(k=>/^(Unnamed|\.{3}\d+)/i.test(k));
-  const values0=Object.values(rows[0]).map(v=>String(v||'').trim().toUpperCase());
-  const looksLikeHeader=['INCIDENTE','CIDADE','CLUSTER','NODE','QOE','SOLU','OBSERV'].some(h=>values0.some(v=>v.includes(h)));
-  if(badKeys.length/Math.max(1,keys.length)>0.3 && looksLikeHeader){
-    const newHeader=Object.values(rows[0]).map(v=>String(v||'').trim());
-    const dataRows=rows.slice(1);
-    rows=dataRows.map(r=>{const o={};newHeader.forEach((h,i)=>{const k=keys[i];o[h||`COL_${i}`]=r[k];});return o;});
+  // Mapeamentos automáticos a partir de planilhas comuns
+  const AUTO_MAP = {
+    'CLUSTER': 'Cluster',
+    'CIDADE': 'Cidade',
+    'NODE': 'Node',
+    'HI_INICIO': 'Data',
+    'INCIDENTE': 'Tipo_Incidente',
+    'SOLUCAO': 'Tipo_Fechamento',
+    'QOE_PRE': 'QOE_Pre',
+    'QOE_POS': 'QOE_Pos',
+    'HF_FIM': 'Data_Fim',
+    'OBSERVACAO': 'Observacao',
+    'OUTAGE_MDU': 'Outage_MDU',
+    'RET': 'RET'
+  };
+
+  // Bootstrap tooltips
+  const enableTooltips = () => $$("[data-bs-toggle='tooltip']").forEach(el => new bootstrap.Tooltip(el));
+  document.addEventListener('DOMContentLoaded', enableTooltips);
+
+  // Drag & Drop upload
+  const dropArea = $('#dropArea');
+  const inputFile = $('#inputFile');
+  ;['dragenter','dragover'].forEach(evt=>dropArea.addEventListener(evt, e=>{e.preventDefault(); dropArea.classList.add('dragover');}))
+  ;['dragleave','drop'].forEach(evt=>dropArea.addEventListener(evt, e=>{e.preventDefault(); dropArea.classList.remove('dragover');}))
+  dropArea.addEventListener('drop', e=>{
+    const file = e.dataTransfer.files?.[0];
+    if(file) handleFile(file);
+  });
+  inputFile.addEventListener('change', e=>{
+    const file = e.target.files?.[0];
+    if(file) handleFile(file);
+  });
+
+  // Botão Demo: usa dados sintéticos gerados a partir da estrutura esperada
+  $('#btnDemo').addEventListener('click', ()=>{
+    const demo = makeDemoData();
+    DATA_ALL = demo;
+    RAW = [...DATA_ALL];
+    afterLoad();
+  });
+
+  // =========================
+  // Leitura da planilha (SheetJS)
+  // =========================
+  function handleFile(file){
+    const ok = /(xlsx|xls|csv)$/i.test(file.name);
+    if(!ok){
+      return alert('Formato inválido. Envie .xlsx, .xls ou .csv');
+    }
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      // prioriza primeira aba com dados
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      let json = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+      json = normalizeColumns(json);
+      const { rows, errors } = validateAndFix(json);
+      if(errors.length){
+        alert('Aviso de validação:\n' + errors.join('\n'));
+      }
+      DATA_ALL = rows;
+      RAW = [...DATA_ALL];
+      afterLoad();
+    };
+    reader.readAsArrayBuffer(file);
   }
-  const map={};
-  Object.keys(rows[0]).forEach(c=>{
-    const k=c.trim().normalize('NFD').replace(/\p{Diacritic}/gu,'').toUpperCase().replace(/\s+/g,'_').replace(/[()]/g,'');
-    map[c]=AUTO_MAP[k]||AUTO_MAP[c]||c;
-  });
-  return rows.map(r=>{
-    const o={};Object.entries(r).forEach(([k,v])=>o[map[k]]=v);
-    if(o['Data']&&!isFinite(Date.parse(o['Data'])))o['Data']=parseDateSmart(o['Data']);
-    return o;
-  });
-}
 
-function validateAndFix(rows){
-  const errors=[];const out=rows.map(r=>({...r}));
-  const missing=Object.values(EXPECTED).filter(k=>!rows.some(r=>k in r));
-  if(missing.length) missing.forEach(m=>errors.push(`Coluna esperada ausente: ${m}`));
-  out.forEach(r=>{
-    r.Data=r.Data?new Date(r.Data):null;
-    r.QOE_Pre=r.QOE_Pre!==undefined&&r.QOE_Pre!==''?Number(r.QOE_Pre):null;
-    r.QOE_Pos=r.QOE_Pos!==undefined&&r.QOE_Pos!==''?Number(r.QOE_Pos):null;
-    r.Status_Reincidencia=r.Status_Reincidencia||'';
-    ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento'].forEach(k=>{if(r[k]===undefined)r[k]='';r[k]=String(r[k]).trim();});
-  });
-  return{rows:out,errors};
-}
-
-function parseDateSmart(s){
-  if(!s)return'';
-  const m1=s.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
-  if(m1){const[_,d,mo,y,h='00',mi='00',se='00']=m1;return new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}`)}
-  const t=Date.parse(s);return isFinite(t)?new Date(t):'';
-}
-
-// =========================
-// Filtros e Renderizações
-// =========================
-$('#btnAplicarFiltros').addEventListener('click', applyFilters);
-$('#btnLimparFiltros').addEventListener('click',()=>{
-  $('#filterCluster').value='';$('#filterDataIni').value='';$('#filterDataFim').value='';applyFilters();
-});
-
-function afterLoad(){
-  const clusters=Array.from(new Set(DATA_ALL.map(r=>r.Cluster).filter(Boolean))).sort();
-  $('#filterCluster').innerHTML='<option value="">Todos</option>'+clusters.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-  applyFilters();
-}
-
-function applyFilters(){
-  const c=$('#filterCluster').value;
-  const di=$('#filterDataIni').value?new Date($('#filterDataIni').value):null;
-  const df=$('#filterDataFim').value?new Date($('#filterDataFim').value):null;
-  RAW=DATA_ALL.filter(r=>{
-    let ok=true;
-    if(c)ok=ok&&r.Cluster===c;
-    if(di)ok=ok&&r.Data&&r.Data>=di;
-    if(df){const dfEnd=new Date(df);dfEnd.setHours(23,59,59,999);ok=ok&&r.Data&&r.Data<=dfEnd;}
-    return ok;
-  });
-  const byNode=groupBy(RAW,'Node');
-  RAW.forEach(r=>{const count=(byNode[r.Node]||[]).length;r.Status_Reincidencia=count>1?'Reincidente':'Único';});
-  renderAll();
-}
-
-// =========================
-// Funções auxiliares
-// =========================
-function groupBy(arr,key){return arr.reduce((a,c)=>{const k=c[key]||'';(a[k]||(a[k]=[])).push(c);return a;},{});}
-function countBy(arr,key){return arr.reduce((a,c)=>{const k=c[key]||'';a[k]=(a[k]||0)+1;return a;},{});}
-function fmtPct(n){return isFinite(n)?`${n.toFixed(1)}%`:'—';}
-function fmtNum(n){return isFinite(n)?n.toFixed(1):'—';}
-function fmtDate(d){return new Date(d).toLocaleString();}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
-function slugify(s){return String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
-
-// =========================
-// Dados de demonstração
-// =========================
-function makeDemoData(){
-  const pick=a=>a[Math.floor(Math.random()*a.length)];
-  const clusters=['RJ','ES','MG','SP'];
-  const cidades={RJ:['RIO DE JANEIRO','NITEROI'],ES:['VILA VELHA'],MG:['BELO HORIZONTE'],SP:['SÃO PAULO','SANTOS']};
-  const tipos=['MDU FILTRADO','SDU FILTRADO','NORMALIZADO SEM INTERVENÇÃO','CLEARDATE'];
-  const out=[];
-  for(let i=0;i<80;i++){
-    const cl=pick(clusters);const ci=pick(cidades[cl]);
-    const node=['CENACA','SPMOR','NIT-01','RIO-05'][Math.floor(Math.random()*4)]+'-'+(100+Math.floor(Math.random()*900));
-    const dt=new Date(2025,9,10+Math.floor(Math.random()*7),6+Math.floor(Math.random()*18),Math.floor(Math.random()*60));
-    const qpre=20+Math.random()*40;const qpos=qpre+(-10+Math.random()*40);
-    out.push({Cluster:cl,Node:node,Cidade:ci,Data:dt,Tipo_Incidente:'INM'+String(10000000+Math.floor(Math.random()*99999)),Tipo_Fechamento:pick(tipos),QOE_Pre:Math.max(0,qpre),QOE_Pos:Math.max(0,qpos)});
+  // Normaliza nomes de colunas para canônicas
+  function normalizeColumns(rows){
+    if(!rows.length) return [];
+    const map = {};
+    const cols = Object.keys(rows[0]);
+    cols.forEach(c=>{
+      const k = c.trim().toUpperCase().replace(/\s+/g,'_');
+      if(AUTO_MAP[k]) map[c] = AUTO_MAP[k];
+      else map[c] = c; // mantém
+    });
+    return rows.map(r=>{
+      const o={};
+      Object.entries(r).forEach(([k,v])=>{ o[ map[k] ] = v; });
+      // Alias comuns
+      if(o['Data'] && !isFinite(Date.parse(o['Data']))) {
+        // tenta converter padrão dd/mm/aaaa hh:mm
+        o['Data'] = parseDateSmart(o['Data']);
+      }
+      return o;
+    });
   }
-  return out;
-}
 
-</script>
+  // Valida e ajusta dataset para colunas esperadas
+  function validateAndFix(rows){
+    const errors=[];
+    const out = rows.map(r=>({ ...r }));
+
+    // Checa obrigatórias
+    const missing = Object.values(EXPECTED).filter(k=>!rows.some(r=>k in r));
+    // Se ausentes, tenta mapear a partir de colunas similares
+    if(missing.length){
+      // Já fizemos normalização; apenas reporta faltantes
+      missing.forEach(m=>errors.push(`Coluna esperada ausente: ${m}`));
+    }
+
+    // Tipagens e cálculos auxiliares
+    out.forEach(r=>{
+      // Data (Date)
+      r.Data = r.Data ? new Date(r.Data) : null;
+      // QOE numérico
+      r.QOE_Pre = r.QOE_Pre !== undefined && r.QOE_Pre !== '' ? Number(r.QOE_Pre) : null;
+      r.QOE_Pos = r.QOE_Pos !== undefined && r.QOE_Pos !== '' ? Number(r.QOE_Pos) : null;
+      // Status reincidência: calcula se Node aparece >1 no período filtrado (posteriormente recalculado pelos filtros)
+      r.Status_Reincidencia = r.Status_Reincidencia || '';
+      // Normaliza textos
+      ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento'].forEach(k=>{ if(r[k]===undefined) r[k]=''; r[k] = String(r[k]).trim(); });
+    });
+
+    return { rows: out, errors };
+  }
+
+  function parseDateSmart(s){
+    if(!s) return '';
+    // tenta dd/mm/yyyy HH:MM, dd/mm/yyyy, yyyy-mm-dd
+    const m1 = s.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m1){
+      const [_,d,mo,y,h='00',mi='00',se='00'] = m1;
+      return new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}`);
+    }
+    const t = Date.parse(s);
+    return isFinite(t) ? new Date(t) : '';
+  }
+
+  // =========================
+  // Pós-carregamento: preencher UI
+  // =========================
+  function afterLoad(){
+    // Preenche clusters em filtro
+    const clusters = Array.from(new Set(DATA_ALL.map(r=>r.Cluster).filter(Boolean))).sort();
+    const sel = $('#filterCluster');
+    sel.innerHTML = '<option value="">Todos</option>' + clusters.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+    applyFilters(); // aplica filtros iniciais
+  }
+
+  // =========================
+  // Filtros
+  // =========================
+  $('#btnAplicarFiltros').addEventListener('click', applyFilters);
+  $('#btnLimparFiltros').addEventListener('click', ()=>{
+    $('#filterCluster').value='';
+    $('#filterDataIni').value='';
+    $('#filterDataFim').value='';
+    applyFilters();
+  });
+
+  function applyFilters(){
+    const c = $('#filterCluster').value;
+    const di = $('#filterDataIni').value ? new Date($('#filterDataIni').value) : null;
+    const df = $('#filterDataFim').value ? new Date($('#filterDataFim').value) : null;
+
+    RAW = DATA_ALL.filter(r=>{
+      let ok = true;
+      if(c) ok = ok && r.Cluster === c;
+      if(di) ok = ok && r.Data && r.Data >= di;
+      if(df) {
+        const dfEnd = new Date(df); dfEnd.setHours(23,59,59,999);
+        ok = ok && r.Data && r.Data <= dfEnd;
+      }
+      return ok;
+    });
+
+    // Recalcula Status_Reincidencia baseado no RAW atual
+    const byNode = groupBy(RAW, 'Node');
+    RAW.forEach(r=>{
+      const count = (byNode[r.Node]||[]).length;
+      r.Status_Reincidencia = count > 1 ? 'Reincidente' : 'Único';
+    });
+
+    renderAll();
+  }
+
+  // =========================
+  // Renderizações principais
+  // =========================
+  function renderAll(){
+    renderCluster();
+    renderQoe();
+    renderFechamento();
+    renderReinc();
+    renderResumo();
+  }
+
+  // 1) INCIDENTES POR CLUSTER
+  let clusterSortDir = 'desc';
+  $('#btnSortClusterAsc').addEventListener('click', ()=>{ clusterSortDir='asc'; renderCluster(); });
+  $('#btnSortClusterDesc').addEventListener('click', ()=>{ clusterSortDir='desc'; renderCluster(); });
+
+  function renderCluster(){
+    const grp = countBy(RAW, 'Cluster');
+    let rows = Object.entries(grp).map(([k,v])=>({ Cluster:k||'(vazio)', Inc:v }));
+    rows.sort((a,b)=> clusterSortDir==='asc' ? a.Inc-b.Inc : b.Inc-a.Inc);
+
+    // tabela
+    const tbody = $('#tblCluster tbody');
+    tbody.innerHTML = rows.map(r=>`<tr><td>${escapeHtml(r.Cluster)}</td><td class="text-end">${r.Inc}</td></tr>`).join('');
+
+    // chart
+    const labels = rows.map(r=>r.Cluster);
+    const data = rows.map(r=>r.Inc);
+    upsertBar('chartCluster', 'Incidentes por Cluster', labels, data, { indexAxis: 'y' });
+  }
+
+  // 2) QOE PRÉ vs PÓS
+  function renderQoe(){
+    // Por Node (média por node)
+    const byNode = aggregateQoe(RAW, ['Node','Cluster','Cidade']);
+    const tbNode = $('#tblQoeNode tbody');
+    tbNode.innerHTML = byNode.map(r=>rowQoeHtml(r)).join('');
+
+    // Por Cluster
+    const byClu = aggregateQoe(RAW, ['Cluster']);
+    $('#tblQoeCluster tbody').innerHTML = byClu.map(r=>rowQoeHtml(r)).join('');
+    // gráfico cluster
+    upsertBar('chartQoeCluster', 'Variação % por Cluster', byClu.map(r=>r.Cluster||'(vazio)'), byClu.map(r=>r.varPct), {});
+
+    // Por Cidade
+    const byCid = aggregateQoe(RAW, ['Cidade']);
+    $('#tblQoeCidade tbody').innerHTML = byCid.map(r=>rowQoeHtml(r)).join('');
+    upsertBar('chartQoeCidade', 'Variação % por Cidade', byCid.map(r=>r.Cidade||'(vazio)'), byCid.map(r=>r.varPct), {});
+  }
+
+  function rowQoeHtml(r){
+    const status = statusFromDelta(r.varPct);
+    const icon = statusIcon(status);
+    const badgeClass = statusBadge(status);
+    return `<tr>
+      <td>${escapeHtml(r.Node||'—')}</td>
+      <td>${escapeHtml(r.Cluster||'—')}</td>
+      <td>${escapeHtml(r.Cidade||'—')}</td>
+      <td class="text-end">${fmtNum(r.qoePre)}</td>
+      <td class="text-end">${fmtNum(r.qoePos)}</td>
+      <td class="text-end">${fmtPct(r.varPct)}</td>
+      <td><span class="badge ${badgeClass}">${icon} ${status}</span></td>
+    </tr>`;
+  }
+
+  function aggregateQoe(rows, keys){
+    const map = new Map();
+    rows.forEach(r=>{
+      const k = keys.map(k=>r[k]||'').join('||');
+      const acc = map.get(k) || { cnt:0, qpre:0, qpos:0, 
+        Node: r.Node||'', Cluster: r.Cluster||'', Cidade: r.Cidade||'' };
+      acc.cnt++; acc.qpre += isFinite(r.QOE_Pre)? r.QOE_Pre:0; acc.qpos += isFinite(r.QOE_Pos)? r.QOE_Pos:0;
+      map.set(k, acc);
+    });
+    const out=[];
+    map.forEach((v)=>{
+      const qpre = v.cnt? v.qpre/v.cnt : 0;
+      const qpos = v.cnt? v.qpos/v.cnt : 0;
+      const varPct = qpre ? ((qpos - qpre)/qpre)*100 : (qpos? 100:0);
+      out.push({ Node:v.Node, Cluster:v.Cluster, Cidade:v.Cidade, qoePre:qpre, qoePos:qpos, varPct });
+    });
+    // ordena por maior variação positiva
+    out.sort((a,b)=> b.varPct - a.varPct);
+    return out;
+  }
+
+  function statusFromDelta(p){
+    if(p > 2) return 'Melhoria';
+    if(p < -2) return 'Piora';
+    return 'Estável';
+  }
+  function statusIcon(s){
+    if(s==='Melhoria') return '<i class="bi bi-arrow-up"></i>';
+    if(s==='Piora') return '<i class="bi bi-arrow-down"></i>';
+    return '<i class="bi bi-dash"></i>';
+  }
+  function statusBadge(s){
+    if(s==='Melhoria') return 'badge-green';
+    if(s==='Piora') return 'badge-red';
+    return 'badge-yellow';
+  }
+
+  // 3) TIPO DE FECHAMENTO
+  function renderFechamento(){
+    const grp = countBy(RAW, 'Tipo_Fechamento');
+    const entries = Object.entries(grp).map(([k,v])=>({ tipo: k||'(vazio)', vol: v }));
+    const total = entries.reduce((a,b)=>a+b.vol,0) || 1;
+
+    // tabela
+    $('#tblFechamento tbody').innerHTML = entries
+      .sort((a,b)=> b.vol-a.vol)
+      .map(e=>`<tr><td>${escapeHtml(e.tipo)}</td><td class="text-end">${e.vol}</td><td class="text-end">${fmtPct((e.vol/total)*100)}</td></tr>`)
+      .join('');
+
+    // chart + legenda
+    upsertPie('chartFechamento', entries.map(e=>e.tipo), entries.map(e=>e.vol));
+    const colors = charts['chartFechamento']?.data?.datasets?.[0]?.backgroundColor || [];
+    const legend = entries.map((e,i)=>`<span class="legend-dot" style="background:${colors[i]||'#999'}"></span>${escapeHtml(e.tipo)}`).join('<br>');
+    $('#legendFechamento').innerHTML = legend;
+  }
+
+  // 4) LOG DE REINCIDÊNCIA
+  function renderReinc(){
+    const tbody = $('#tblReinc tbody');
+    const rows = [...RAW].sort((a,b)=> (a.Node||'').localeCompare(b.Node||''));
+    tbody.innerHTML = rows.map(r=>{
+      const cls = r.Status_Reincidencia==='Reincidente' ? 'table-warning' : '';
+      return `<tr class="${cls}">
+        <td>${escapeHtml(r.Node||'—')}</td>
+        <td>${escapeHtml(r.Cluster||'—')}</td>
+        <td>${escapeHtml(r.Cidade||'—')}</td>
+        <td>${r.Data ? fmtDate(r.Data) : '—'}</td>
+        <td>${escapeHtml(r.Tipo_Incidente||'—')}</td>
+        <td>${escapeHtml(r.Status_Reincidencia||'—')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // 5) DASHBOARD RESUMO POR CLUSTER
+  function renderResumo(){
+    const wrap = $('#cardsResumo');
+    const byC = groupBy(RAW, 'Cluster');
+    const el = document.createElement('div');
+    el.className = 'row g-3';
+
+    Object.entries(byC).forEach(([cluster, rows])=>{
+      const total = rows.length;
+      // taxa de reincidência
+      const byNode = groupBy(rows, 'Node');
+      const reinc = Object.values(byNode).filter(a=>a.length>1).length;
+      const taxaReinc = total ? (reinc / Object.keys(byNode).length) * 100 : 0;
+      // performance comparativa (variação média)
+      const agg = aggregateQoe(rows, ['Cluster']);
+      const varPct = agg.length ? agg[0].varPct : 0;
+      const badge = statusBadge( statusFromDelta(varPct) );
+
+      const card = document.createElement('div');
+      card.className = 'col-12 col-md-6 col-xl-4';
+      card.innerHTML = `
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="text-uppercase text-muted mb-1">${escapeHtml(cluster||'(vazio)')}</h6>
+                <div class="kpi" data-bs-toggle="tooltip" data-bs-title="Total de incidentes no cluster">${total} incidentes</div>
+              </div>
+              <span class="badge ${badge}">${fmtPct(varPct)}</span>
+            </div>
+            <div class="mt-3 small-note">Taxa de reincidência</div>
+            <div class="progress" role="progressbar" aria-label="Taxa de reincidência">
+              <div class="progress-bar" style="width:${Math.min(Math.max(taxaReinc,0),100).toFixed(1)}%"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 small">
+              <span>${Object.keys(byNode).length} nodes</span>
+              <span>${fmtPct(taxaReinc)}</span>
+            </div>
+          </div>
+        </div>`;
+      el.appendChild(card);
+    });
+
+    wrap.innerHTML = '';
+    wrap.appendChild(el);
+    enableTooltips();
+  }
+
+  // =========================
+  // Gráficos (Chart.js)
+  // =========================
+  function upsertBar(id, label, labels, data, extraOpts){
+    const ctx = document.getElementById(id);
+    const cfg = {
+      type: 'bar',
+      data: { labels, datasets: [{ label, data }] },
+      options: Object.assign({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => `${ctx.raw}` } } },
+        scales: { y: { beginAtZero: true } }
+      }, extraOpts||{})
+    };
+    if(charts[id]){ charts[id].destroy(); }
+    charts[id] = new Chart(ctx, cfg);
+  }
+
+  function upsertPie(id, labels, data){
+    const ctx = document.getElementById(id);
+    const cfg = {
+      type: 'pie',
+      data: { labels, datasets: [{ data }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    };
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(ctx, cfg);
+  }
+
+  // =========================
+  // Exportação PDF (pdfmake)
+  // =========================
+  function exportSectionPDF(title, tableSelector, chartId){
+    const table = $(tableSelector);
+    const head = Array.from(table.querySelectorAll('thead th')).map(th=>({ text: th.innerText, style:'tableHeader' }));
+    const bodyRows = Array.from(table.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.children).map(td=>({ text: td.innerText })));
+
+    // Imagem do gráfico, se houver
+    let chartImg = null;
+    if(chartId && charts[chartId]){
+      chartImg = charts[chartId].toBase64Image();
+    }
+
+    const docDef = {
+      pageSize: 'A4', pageMargins: [24,24,24,24],
+      content: [
+        { text: title, style: 'title' },
+        { text: new Date().toLocaleString(), style: 'sub' },
+        chartImg ? { image: chartImg, width: 500, margin:[0,12,0,12] } : {},
+        { table: { headerRows: 1, widths: Array(head.length).fill('*'), body: [ head.map(h=>h.text), ...bodyRows.map(r=>r.map(c=>c.text)) ] }, layout: 'lightHorizontalLines' }
+      ],
+      styles: {
+        title: { fontSize: 16, bold: true, color: '#333', margin:[0,0,0,4] },
+        sub: { fontSize: 9, color:'#666' },
+        tableHeader: { bold: true }
+      }
+    };
+    pdfMake.createPdf(docDef).download(`${slugify(title)}.pdf`);
+  }
+
+  $('#exportClusterPDF').addEventListener('click', ()=>exportSectionPDF('Relatório de Incidentes por Cluster', '#tblCluster', 'chartCluster'));
+  $('#exportQOEPDF').addEventListener('click', ()=>exportSectionPDF('Análise Comparativa QOE Pré vs Pós (Node)', '#tblQoeNode', null));
+  $('#exportFechamentoPDF').addEventListener('click', ()=>exportSectionPDF('Análise de Tipo de Fechamento', '#tblFechamento', 'chartFechamento'));
+  $('#exportReincPDF').addEventListener('click', ()=>exportSectionPDF('Log de Reincidência de Nodes', '#tblReinc', null));
+  $('#exportResumoPDF').addEventListener('click', ()=>{
+    // Exporta uma tabela agregada por cluster para o resumo
+    // Monta uma tabela temporária
+    const byC = groupBy(RAW, 'Cluster');
+    const head = ['Cluster', 'Incidentes', 'Var % Média', 'Taxa Reincidência'];
+    const rows = Object.entries(byC).map(([cluster, rows])=>{
+      const total = rows.length;
+      const byNode = groupBy(rows, 'Node');
+      const reinc = Object.values(byNode).filter(a=>a.length>1).length;
+      const taxaReinc = total ? (reinc / Object.keys(byNode).length) * 100 : 0;
+      const agg = aggregateQoe(rows, ['Cluster']);
+      const varPct = agg.length ? agg[0].varPct : 0;
+      return [ cluster||'(vazio)', String(total), fmtPct(varPct), fmtPct(taxaReinc) ];
+    });
+
+    const docDef = {
+      pageSize: 'A4', pageMargins: [24,24,24,24],
+      content: [
+        { text: 'Dashboard Resumo por Cluster', style: 'title' },
+        { text: new Date().toLocaleString(), style: 'sub' },
+        { table: { headerRows: 1, widths: ['*','auto','auto','auto'], body: [ head, ...rows ] }, layout: 'lightHorizontalLines' }
+      ],
+      styles: { title: { fontSize: 16, bold:true }, sub: { fontSize: 9, color:'#666' } }
+    };
+    pdfMake.createPdf(docDef).download('dashboard_resumo_por_cluster.pdf');
+  });
+
+  // =========================
+  // Funções auxiliares
+  // =========================
+  function groupBy(arr, key){
+    return arr.reduce((acc,cur)=>{ const k = cur[key]||''; (acc[k]||(acc[k]=[])).push(cur); return acc; },{});
+  }
+  function countBy(arr, key){
+    return arr.reduce((acc,cur)=>{ const k = cur[key]||''; acc[k]=(acc[k]||0)+1; return acc; },{});
+  }
+  function fmtPct(n){ return isFinite(n) ? `${n.toFixed(1)}%` : '—'; }
+  function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
+  function fmtDate(d){ return new Date(d).toLocaleString(); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+  function slugify(s){ return String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+
+  // Gera dados de demonstração (opcional)
+  function makeDemoData(){
+    const pick = (a)=> a[Math.floor(Math.random()*a.length)];
+    const clusters = ['RJ','ES','MG','SP'];
+    const cidades = {
+      RJ:['RIO DE JANEIRO','NITEROI'], ES:['VILA VELHA'], MG:['BELO HORIZONTE'], SP:['SÃO PAULO','SANTOS']
+    };
+    const tipos = ['MDU FILTRADO','SDU FILTRADO','NORMALIZADO SEM INTERVENÇÃO','CLEARDATE'];
+    const out=[];
+    for(let i=0;i<80;i++){
+      const cl = pick(clusters);
+      const ci = pick(cidades[cl]);
+      const node = ['CENACA','SPMOR','NIT-01','RIO-05'][Math.floor(Math.random()*4)] + '-' + (100+Math.floor(Math.random()*900));
+      const dt = new Date(2025,9,10+Math.floor(Math.random()*7), 6+Math.floor(Math.random()*18), Math.floor(Math.random()*60));
+      const qpre = 20+Math.random()*40; const qpos = qpre + (-10 + Math.random()*40);
+      out.push({
+        Cluster: cl,
+        Node: node,
+        Cidade: ci,
+        Data: dt,
+        Tipo_Incidente: 'INM'+String(10000000+Math.floor(Math.random()*99999)),
+        Tipo_Fechamento: pick(tipos),
+        QOE_Pre: Math.max(0,qpre),
+        QOE_Pos: Math.max(0,qpos)
+      });
+    }
+    return out;
+  }
+
+  // Inicializa tooltips ao trocar de aba
+  document.addEventListener('shown.bs.tab', enableTooltips);
+
+  </script>
 </body>
 </html>
