@@ -41,13 +41,20 @@
       box-sizing: border-box;
     }
     
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    
     body {
       background: var(--light-bg);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: var(--text-dark);
       line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
     }
     
     .app-header {
@@ -56,6 +63,7 @@
       box-shadow: var(--shadow-md);
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
     
     .app-header::before {
@@ -79,14 +87,30 @@
       box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     }
     
+    .container-fluid {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 0;
+    }
+    
+    .container-fluid .row {
+      flex: 1;
+      margin: 0;
+      overflow: hidden;
+    }
+    
     .sidebar {
-      min-height: 100vh;
       background: var(--card-bg);
       border-right: 1px solid var(--border-color);
       box-shadow: var(--shadow-sm);
       backdrop-filter: blur(10px);
       position: relative;
       z-index: 10;
+      height: 100%;
+      overflow-y: auto;
+      padding: 1.5rem;
     }
     
     .sidebar::before {
@@ -143,7 +167,7 @@
     .upload-drop {
       border: 2px dashed var(--accent);
       border-radius: 16px;
-      padding: 2rem;
+      padding: 1.5rem;
       text-align: center;
       background: var(--glass);
       backdrop-filter: blur(10px);
@@ -151,6 +175,7 @@
       cursor: pointer;
       position: relative;
       overflow: hidden;
+      margin-bottom: 1.5rem;
     }
     
     .upload-drop::before {
@@ -185,9 +210,25 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      height: 100%;
+    }
+    
+    .tab-content {
+      height: 100%;
+    }
+    
+    .tab-pane {
+      height: 100%;
+      overflow-y: auto;
+    }
+    
     .chart-wrap {
       position: relative;
-      height: 380px;
+      height: 340px;
       background: var(--card-bg);
       border-radius: 16px;
       padding: 20px;
@@ -540,6 +581,7 @@
         min-height: auto;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        height: auto;
       }
       
       .chart-wrap {
@@ -548,6 +590,10 @@
       
       .card-custom:hover {
         transform: none;
+      }
+      
+      main {
+        padding: 1rem;
       }
     }
   </style>
@@ -563,10 +609,10 @@
 </header>
 
 <div class="container-fluid">
-  <div class="row">
+  <div class="row flex-nowrap" style="height: 100%;">
     <!-- ===== SIDEBAR ===== -->
-    <nav class="col-12 col-md-3 col-lg-2 sidebar p-4">
-      <div class="upload-drop mb-4" id="dropArea">
+    <nav class="col-12 col-md-3 col-lg-2 sidebar">
+      <div class="upload-drop" id="dropArea">
         <i class="bi bi-cloud-arrow-up fs-2 text-primary mb-3"></i>
         <p class="mb-1 fw-semibold">Arraste e solte sua planilha aqui</p>
         <span class="small-note text-muted">Suporta XLSX, XLS e CSV</span>
@@ -597,17 +643,17 @@
     </nav>
 
     <!-- ===== MAIN ===== -->
-    <main class="col-12 col-md-9 col-lg-10 p-4 p-md-5">
-      <div class="tab-content">
+    <main class="col-12 col-md-9 col-lg-10">
+      <div class="tab-content h-100">
         <!-- INCIDENTES POR CLUSTER -->
-        <section class="tab-pane fade show active" id="tabCluster">
+        <section class="tab-pane fade show active h-100" id="tabCluster">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Incidentes por Cluster</h5>
             <button class="btn btn-primary btn-sm" id="btnPDFCluster">
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div class="row">
+          <div class="row h-100" style="min-height: 0;">
             <div class="col-12 col-lg-5 mb-4">
               <div class="card-custom p-4 h-100">
                 <div class="table-responsive">
@@ -624,7 +670,7 @@
               </div>
             </div>
             <div class="col-12 col-lg-7 mb-4">
-              <div class="chart-wrap">
+              <div class="chart-wrap h-100">
                 <canvas id="chartCluster"></canvas>
               </div>
             </div>
@@ -632,7 +678,7 @@
         </section>
 
         <!-- INCIDENTES POR CIDADE -->
-        <section class="tab-pane fade" id="tabCidade">
+        <section class="tab-pane fade h-100" id="tabCidade">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
               <button class="btn btn-outline-secondary btn-sm back-button" id="btnVoltarCluster" style="display: none;">
@@ -644,7 +690,7 @@
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div class="row">
+          <div class="row h-100" style="min-height: 0;">
             <div class="col-12 col-lg-5 mb-4">
               <div class="card-custom p-4 h-100">
                 <div class="table-responsive">
@@ -661,7 +707,7 @@
               </div>
             </div>
             <div class="col-12 col-lg-7 mb-4">
-              <div class="chart-wrap">
+              <div class="chart-wrap h-100">
                 <canvas id="chartCidade"></canvas>
               </div>
             </div>
@@ -669,15 +715,15 @@
         </section>
 
         <!-- QOE -->
-        <section class="tab-pane fade" id="tabQOE">
+        <section class="tab-pane fade h-100" id="tabQOE">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">QOE Pré vs Pós</h5>
             <button class="btn btn-primary btn-sm" id="btnPDFQOE">
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div class="card-custom p-4">
-            <div class="table-responsive">
+          <div class="card-custom p-4 h-100">
+            <div class="table-responsive h-100">
               <table class="table table-sm table-hover" id="tblQoeNode">
                 <thead class="table-light">
                   <tr>
@@ -697,16 +743,16 @@
         </section>
 
         <!-- FECHAMENTO -->
-        <section class="tab-pane fade" id="tabFechamento">
+        <section class="tab-pane fade h-100" id="tabFechamento">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Tipo de Fechamento</h5>
             <button class="btn btn-primary btn-sm" id="btnPDFFechamento">
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div class="row">
+          <div class="row h-100" style="min-height: 0;">
             <div class="col-12 col-lg-6 mb-4">
-              <div class="chart-wrap">
+              <div class="chart-wrap h-100">
                 <canvas id="chartFechamento"></canvas>
               </div>
             </div>
@@ -731,15 +777,15 @@
         </section>
 
         <!-- REINCIDÊNCIA -->
-        <section class="tab-pane fade" id="tabReinc">
+        <section class="tab-pane fade h-100" id="tabReinc">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Log de Reincidência</h5>
             <button class="btn btn-primary btn-sm" id="btnPDFReinc">
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div class="card-custom p-4">
-            <div class="table-responsive">
+          <div class="card-custom p-4 h-100">
+            <div class="table-responsive h-100">
               <table class="table table-sm table-hover" id="tblReinc">
                 <thead class="table-light">
                   <tr>
@@ -756,14 +802,14 @@
         </section>
 
         <!-- DASHBOARD -->
-        <section class="tab-pane fade" id="tabResumo">
+        <section class="tab-pane fade h-100" id="tabResumo">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Dashboard Resumo</h5>
             <button class="btn btn-primary btn-sm" id="btnPDFResumo">
               <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
             </button>
           </div>
-          <div id="cardsResumo" class="row g-4"></div>
+          <div id="cardsResumo" class="row g-4" style="max-height: calc(100% - 80px); overflow-y: auto;"></div>
         </section>
       </div>
     </main>
