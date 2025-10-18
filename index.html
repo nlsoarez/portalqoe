@@ -780,12 +780,27 @@ let DATA_ALL=[], RAW=[], charts={};
 let selectedCluster = null;
 
 /* ================= Mapeamento flexível de cabeçalhos ================= */
+// ATUALIZADO: Mapeamento correto baseado no arquivo de exemplo
 const AUTO_MAP={
-  'INCIDENTE':'INCIDENTE','CIDADE':'Cidade','CLUSTER':'Cluster','NODE':'Node',
-  'HI (DATA E HORA INICIO)':'Data','HI (DATA E HORA INÍCIO)':'Data','HI_INICIO':'Data','HI INICIO':'Data','HI INÍCIO':'Data','DATA':'Data',
-  'QOE PRE':'QOE_Pre','QOE PRÉ':'QOE_Pre','QOE_PRE':'QOE_Pre',
-  'QOE POS':'QOE_Pos','QOE PÓS':'QOE_Pos','QOE_POS':'QOE_Pos',
-  'SOLUCAO':'Tipo_Fechamento','SOLUÇÃO':'Tipo_Fechamento','TIPO_FECHAMENTO':'Tipo_Fechamento'
+  'INCIDENTE':'INCIDENTE',
+  'CIDADE':'Cidade',
+  'CLUSTER':'Cluster',
+  'HI (DATA E HORA INÍCIO)':'Data',
+  'HI (DATA E HORA INICIO)':'Data',
+  'HI_INICIO':'Data',
+  'HI INICIO':'Data',
+  'HI INÍCIO':'Data',
+  'DATA':'Data',
+  'NODE':'Node',
+  'QOE PRÉ':'QOE_Pre',
+  'QOE PRE':'QOE_Pre',
+  'QOE_PRE':'QOE_Pre',
+  'QOE PÓS':'QOE_Pos',
+  'QOE POS':'QOE_Pos',
+  'QOE_POS':'QOE_Pos',
+  'SOLUÇÃO':'Tipo_Fechamento',
+  'SOLUCAO':'Tipo_Fechamento',
+  'TIPO_FECHAMENTO':'Tipo_Fechamento'
 };
 
 function normalizeHeader(str) {
@@ -809,31 +824,42 @@ function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
 
 /* ================= Validação de Datas ================= */
 function validarData(dataStr) {
-  if (!dataStr) return null;
+  if (!dataStr || dataStr === '') return null;
+  
+  // Se já é um objeto Date válido
+  if (dataStr instanceof Date && !isNaN(dataStr.getTime())) {
+    return dataStr;
+  }
+  
+  dataStr = String(dataStr).trim();
   
   // Tentar parse como Date primeiro
   let data = new Date(dataStr);
   if (!isNaN(data.getTime())) return data;
   
-  // Tentar corrigir formatos com barras
+  // Tentar corrigir formatos com barras (problema: 16/20/2025)
   if (dataStr.includes('/')) {
     const partes = dataStr.split(/[/\s:]/);
     if (partes.length >= 3) {
-      const dia = parseInt(partes[0]);
-      const mes = parseInt(partes[1]) - 1; // Mês é 0-indexed
-      const ano = parseInt(partes[2]);
+      let dia = parseInt(partes[0]);
+      let mes = parseInt(partes[1]) - 1;
+      let ano = parseInt(partes[2]);
       
-      // Verificar se é uma data válida
-      data = new Date(ano, mes, dia);
-      if (data.getDate() === dia && data.getMonth() === mes && data.getFullYear() === ano) {
-        return data;
+      // Corrigir datas com formato inválido (mês > 12)
+      if (mes > 11) {
+        // Trocar dia e mês
+        [dia, mes] = [mes + 1, dia - 1];
       }
       
-      // Tentar formato americano se o anterior falhar
-      data = new Date(mes + 1 + '/' + dia + '/' + ano);
+      // Tentar criar data com os valores corrigidos
+      data = new Date(ano, mes, dia);
       if (!isNaN(data.getTime())) return data;
     }
   }
+  
+  // Tentar formato ISO
+  data = new Date(dataStr.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
+  if (!isNaN(data.getTime())) return data;
   
   console.warn('Data inválida encontrada:', dataStr);
   return null;
@@ -842,7 +868,7 @@ function validarData(dataStr) {
 /* ================= Função Auxiliar para Formatar Data ================= */
 function formatarData(data) {
   if (!data || !(data instanceof Date) || isNaN(data.getTime())) {
-    return '(data inválida)';
+    return '(sem data)';
   }
   
   try {
@@ -919,17 +945,31 @@ function handleFile(file){
       const rawHeader = (json[headerRowIndex]||[]).map(normalizeHeader);
       const mappedHeader = rawHeader.map(h => AUTO_MAP[h] || h);
 
+      // DEBUG: Mostrar mapeamento no console
+      console.log('Cabeçalhos originais:', rawHeader);
+      console.log('Cabeçalhos mapeados:', mappedHeader);
+
       // Linhas úteis (descarta vazias)
       const dataRows = json.slice(headerRowIndex+1).filter(r => Array.isArray(r) && r.some(cell => String(cell).trim() !== ''));
 
       const rows = dataRows.map(r => {
         const o={};
         mappedHeader.forEach((h,i)=>o[h]=r[i]);
+        
         // Conversões/limpezas - CORRIGIDO
         o['Data'] = validarData(String(o['Data'] || ''));
-        o['QOE_Pre']=Number(String(o['QOE_Pre']).toString().replace(',','.')); if(!isFinite(o['QOE_Pre'])) o['QOE_Pre']=0;
-        o['QOE_Pos']=Number(String(o['QOE_Pos']).toString().replace(',','.')); if(!isFinite(o['QOE_Pos'])) o['QOE_Pos']=0;
-        ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento','INCIDENTE'].forEach(k=>o[k]=String(o[k]||'').trim());
+        o['QOE_Pre']=Number(String(o['QOE_Pre']||'0').toString().replace(',','.')); 
+        if(!isFinite(o['QOE_Pre'])) o['QOE_Pre']=0;
+        
+        o['QOE_Pos']=Number(String(o['QOE_Pos']||'0').toString().replace(',','.')); 
+        if(!isFinite(o['QOE_Pos'])) o['QOE_Pos']=0;
+        
+        // Mapear campos de texto
+        ['Cluster','Node','Cidade','Tipo_Fechamento','INCIDENTE'].forEach(k=>{
+          o[k]=String(o[k]||'').trim();
+          if(o[k]==='') o[k]='(não informado)';
+        });
+        
         return o;
       });
 
@@ -939,6 +979,10 @@ function handleFile(file){
       }
 
       DATA_ALL=rows; RAW=[...rows];
+      
+      // DEBUG: Mostrar primeiras linhas processadas
+      console.log('Primeiras 3 linhas processadas:', rows.slice(0, 3));
+      
       renderAll();
       showToast(`✅ ${rows.length} incidentes carregados com sucesso`, 'success');
     }catch(err){
@@ -993,7 +1037,7 @@ function renderCluster(){
   const tbody = $('#tblCluster tbody');
   tbody.innerHTML = arr.map(({c,v}) => 
     `<tr class="cluster-row pointer slide-in-up" data-cluster="${c}">
-      <td>${c||'(vazio)'}</td>
+      <td>${c}</td>
       <td class="text-end">${v}</td>
     </tr>`
   ).join('');
@@ -1043,7 +1087,7 @@ function renderCluster(){
     'rgb(199, 206, 234)'
   ];
   
-  upsertBar('chartCluster','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{
+  upsertBar('chartCluster','Incidentes',arr.map(x=>x.c),arr.map(x=>x.v),{
     indexAxis:'y',
     colorPalette: colorPalette,
     borderColorPalette: borderColorPalette
@@ -1065,7 +1109,7 @@ function showCidadesPorCluster(cluster) {
   // Atualizar tabela de cidades
   $('#tblCidade tbody').innerHTML = arr.map(({c,v}) => 
     `<tr class="slide-in-up">
-      <td>${c||'(vazio)'}</td>
+      <td>${c}</td>
       <td class="text-end">${v}</td>
     </tr>`
   ).join('');
@@ -1098,7 +1142,7 @@ function showCidadesPorCluster(cluster) {
   ];
   
   // Atualizar gráfico de cidades
-  upsertBar('chartCidade','Incidentes',arr.map(x=>x.c||'(vazio)'),arr.map(x=>x.v),{
+  upsertBar('chartCidade','Incidentes',arr.map(x=>x.c),arr.map(x=>x.v),{
     indexAxis:'y',
     colorPalette: colorPalette,
     borderColorPalette: borderColorPalette
@@ -1133,7 +1177,7 @@ function renderFechamento(){
   const total=Object.values(grp).reduce((a,b)=>a+b,0)||1;
   const arr=Object.entries(grp).map(([t,v])=>({t,v})).sort((a,b)=>b.v-a.v);
   $('#tblFechamento tbody').innerHTML=arr.map(e=>`<tr class="slide-in-up">
-    <td>${e.t||'(vazio)'}</td><td class="text-end">${e.v}</td><td class="text-end">${fmtPct(e.v/total*100)}</td>
+    <td>${e.t}</td><td class="text-end">${e.v}</td><td class="text-end">${fmtPct(e.v/total*100)}</td>
   </tr>`).join('');
   
   // Paleta multicolorida elegante para gráfico de pizza
@@ -1163,7 +1207,7 @@ function renderFechamento(){
     'rgb(199, 206, 234)'
   ];
   
-  upsertPie('chartFechamento',arr.map(e=>e.t||'(vazio)'),arr.map(e=>e.v), {
+  upsertPie('chartFechamento',arr.map(e=>e.t),arr.map(e=>e.v), {
     colorPalette: colorPalette,
     borderColorPalette: borderColorPalette
   });
@@ -1172,7 +1216,7 @@ function renderFechamento(){
   $('#legendFechamento').innerHTML = arr.map((e,i)=>`
     <div class="d-flex align-items-center mb-2 slide-in-up">
       <span class="legend-dot me-2" style="background:${colors[i]||'#999'}"></span>
-      <span class="flex-grow-1">${e.t||'(vazio)'}</span>
+      <span class="flex-grow-1">${e.t}</span>
       <span class="text-muted ms-2">${fmtPct(e.v/total*100)}</span>
     </div>
   `).join('');
@@ -1189,7 +1233,7 @@ function renderReinc(){
       Cidade: l[0].Cidade, 
       Count: l.length,
       Incidents: l.map(x => ({
-        tipo: x.Tipo_Incidente || '(sem tipo)',
+        // REMOVIDO: tipo: x.Tipo_Incidente || '(sem tipo)', - Não existe no arquivo
         solucao: x.Tipo_Fechamento || '(sem solução)',
         data: x.Data ? formatarData(x.Data) : '(sem data)',
         dataOriginal: x.Data, // Manter o objeto Date original
@@ -1197,7 +1241,7 @@ function renderReinc(){
         qoePos: x.QOE_Pos || 0,
         cluster: x.Cluster || '',
         cidade: x.Cidade || '',
-        incidente: x.INCIDENTE || '' // Adicionar número do incidente
+        incidente: x.INCIDENTE || '' // Número do incidente
       }))
     })).sort((a, b) => b.Count - a.Count);
 
@@ -1286,10 +1330,7 @@ function toggleDetalhesNode(tr, nodeData){
                     ${inc.incidente ? `<small class="text-muted d-block mt-1">Incidente: ${inc.incidente}</small>` : ''}
                   </div>
                   <div class="card-body p-3">
-                    <div class="mb-2">
-                      <strong class="text-dark">Tipo:</strong>
-                      <span class="ms-2">${inc.tipo}</span>
-                    </div>
+                    <!-- REMOVIDO: Linha do tipo de incidente que não existe no arquivo -->
                     <div class="mb-2">
                       <strong class="text-dark">Solução:</strong>
                       <span class="ms-2">${inc.solucao}</span>
@@ -1353,7 +1394,7 @@ function renderResumo(){
     card.innerHTML = `
       <div class="card-custom h-100 p-4">
         <div class="card-body p-0">
-          <h5 class="mb-3 section-title">${cl||'(vazio)'}</h5>
+          <h5 class="mb-3 section-title">${cl}</h5>
           <div class="d-flex align-items-center mb-3">
             <div class="me-3">
               <i class="bi bi-exclamation-circle fs-4 text-primary"></i>
@@ -1610,7 +1651,7 @@ document.getElementById('btnPDFResumo').addEventListener('click',()=>{
     const reinc=Object.values(nodes).filter(a=>a.length>1).length;
     const taxa=total?(reinc/Object.keys(nodes).length*100):0;
     const varPct=aggregateQoe(rows,['Cluster'])[0]?.varPct||0;
-    return [ cl||'(vazio)', String(total), fmtPct(varPct), fmtPct(taxa) ];
+    return [ cl, String(total), fmtPct(varPct), fmtPct(taxa) ];
   });
   const docDef={ pageSize:'A4', pageMargins:[24,24,24,24],
     content:[
