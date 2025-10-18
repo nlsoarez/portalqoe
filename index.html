@@ -781,7 +781,7 @@ let selectedCluster = null;
 
 /* ================= Mapeamento flexível de cabeçalhos ================= */
 const AUTO_MAP={
-  'INCIDENTE':'Tipo_Incidente','CIDADE':'Cidade','CLUSTER':'Cluster','NODE':'Node',
+  'INCIDENTE':'INCIDENTE','CIDADE':'Cidade','CLUSTER':'Cluster','NODE':'Node',
   'HI (DATA E HORA INICIO)':'Data','HI (DATA E HORA INÍCIO)':'Data','HI_INICIO':'Data','HI INICIO':'Data','HI INÍCIO':'Data','DATA':'Data',
   'QOE PRE':'QOE_Pre','QOE PRÉ':'QOE_Pre','QOE_PRE':'QOE_Pre',
   'QOE POS':'QOE_Pos','QOE PÓS':'QOE_Pos','QOE_POS':'QOE_Pos',
@@ -806,6 +806,58 @@ function fmtPct(n){
   return `${n.toFixed(1)}%`;
 }
 function fmtNum(n){ return isFinite(n) ? n.toFixed(1) : '—'; }
+
+/* ================= Validação de Datas ================= */
+function validarData(dataStr) {
+  if (!dataStr) return null;
+  
+  // Tentar parse como Date primeiro
+  let data = new Date(dataStr);
+  if (!isNaN(data.getTime())) return data;
+  
+  // Tentar corrigir formatos com barras
+  if (dataStr.includes('/')) {
+    const partes = dataStr.split(/[/\s:]/);
+    if (partes.length >= 3) {
+      const dia = parseInt(partes[0]);
+      const mes = parseInt(partes[1]) - 1; // Mês é 0-indexed
+      const ano = parseInt(partes[2]);
+      
+      // Verificar se é uma data válida
+      data = new Date(ano, mes, dia);
+      if (data.getDate() === dia && data.getMonth() === mes && data.getFullYear() === ano) {
+        return data;
+      }
+      
+      // Tentar formato americano se o anterior falhar
+      data = new Date(mes + 1 + '/' + dia + '/' + ano);
+      if (!isNaN(data.getTime())) return data;
+    }
+  }
+  
+  console.warn('Data inválida encontrada:', dataStr);
+  return null;
+}
+
+/* ================= Função Auxiliar para Formatar Data ================= */
+function formatarData(data) {
+  if (!data || !(data instanceof Date) || isNaN(data.getTime())) {
+    return '(data inválida)';
+  }
+  
+  try {
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    console.error('Erro ao formatar data:', error, data);
+    return '(erro na data)';
+  }
+}
 
 /* ================= Upload ================= */
 const dropArea=$('#dropArea');
@@ -873,14 +925,11 @@ function handleFile(file){
       const rows = dataRows.map(r => {
         const o={};
         mappedHeader.forEach((h,i)=>o[h]=r[i]);
-        // Conversões/limpezas
-        if(o['Data']) {
-          const d = new Date(o['Data']);
-          o['Data'] = isNaN(d.getTime()) ? null : d;
-        } else { o['Data']=null; }
+        // Conversões/limpezas - CORRIGIDO
+        o['Data'] = validarData(String(o['Data'] || ''));
         o['QOE_Pre']=Number(String(o['QOE_Pre']).toString().replace(',','.')); if(!isFinite(o['QOE_Pre'])) o['QOE_Pre']=0;
         o['QOE_Pos']=Number(String(o['QOE_Pos']).toString().replace(',','.')); if(!isFinite(o['QOE_Pos'])) o['QOE_Pos']=0;
-        ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento'].forEach(k=>o[k]=String(o[k]||'').trim());
+        ['Cluster','Node','Cidade','Tipo_Incidente','Tipo_Fechamento','INCIDENTE'].forEach(k=>o[k]=String(o[k]||'').trim());
         return o;
       });
 
@@ -1131,34 +1180,36 @@ function renderFechamento(){
 
 /* ================= Reincidência (com detalhes) - CORRIGIDO ================= */
 function renderReinc(){
-  const byNode=groupBy(RAW,'Node');
-  const reinc=Object.entries(byNode)
-    .filter(([_,list])=>list.length>1)
-    .map(([n,l])=>({
-      Node:n, 
-      Cluster:l[0].Cluster, 
-      Cidade:l[0].Cidade, 
-      Count:l.length,
-      Incidents:l.map(x=>({
+  const byNode = groupBy(RAW, 'Node');
+  const reinc = Object.entries(byNode)
+    .filter(([_, list]) => list.length > 1)
+    .map(([n, l]) => ({
+      Node: n, 
+      Cluster: l[0].Cluster, 
+      Cidade: l[0].Cidade, 
+      Count: l.length,
+      Incidents: l.map(x => ({
         tipo: x.Tipo_Incidente || '(sem tipo)',
         solucao: x.Tipo_Fechamento || '(sem solução)',
-        data: x.Data ? new Date(x.Data).toLocaleDateString('pt-BR') : '(sem data)',
+        data: x.Data ? formatarData(x.Data) : '(sem data)',
+        dataOriginal: x.Data, // Manter o objeto Date original
         qoePre: x.QOE_Pre || 0,
         qoePos: x.QOE_Pos || 0,
         cluster: x.Cluster || '',
-        cidade: x.Cidade || ''
+        cidade: x.Cidade || '',
+        incidente: x.INCIDENTE || '' // Adicionar número do incidente
       }))
-    })).sort((a,b)=>b.Count-a.Count);
+    })).sort((a, b) => b.Count - a.Count);
 
-  const tbody=$('#tblReinc tbody'); 
-  tbody.innerHTML='';
+  const tbody = $('#tblReinc tbody'); 
+  tbody.innerHTML = '';
   
   reinc.forEach((r, index) => {
-    const tr=document.createElement('tr'); 
-    tr.className='pointer slide-in-up';
+    const tr = document.createElement('tr'); 
+    tr.className = 'pointer slide-in-up';
     tr.style.animationDelay = `${index * 0.1}s`;
     tr.setAttribute('data-node', r.Node);
-    tr.innerHTML=`
+    tr.innerHTML = `
       <td>
         <div class="d-flex align-items-center">
           <i class="bi bi-chevron-right me-2 expand-icon" style="font-size: 0.8rem; transition: transform 0.3s ease;"></i>
@@ -1171,17 +1222,15 @@ function renderReinc(){
         <span class="badge bg-danger rounded-pill">${r.Count} ocorrências</span>
       </td>`;
     
-    tr.addEventListener('click',(e)=>{
-      // Não expandir se clicar diretamente no ícone (deixa o toggle do ícone cuidar disso)
+    tr.addEventListener('click', (e) => {
       if (!e.target.classList.contains('expand-icon')) {
         toggleDetalhesNode(tr, r);
       }
     });
     
-    // Evento específico para o ícone de expandir
     const expandIcon = tr.querySelector('.expand-icon');
     expandIcon.addEventListener('click', (e) => {
-      e.stopPropagation(); // Impede que o evento chegue na linha
+      e.stopPropagation();
       toggleDetalhesNode(tr, r);
     });
     
@@ -1194,17 +1243,14 @@ function toggleDetalhesNode(tr, nodeData){
   const expandIcon = tr.querySelector('.expand-icon');
   const nodeName = nodeData.Node;
   
-  // Verifica se já está expandido
   const existingDetails = $(`tr.details-row[data-node="${nodeName}"]`);
   
   if (existingDetails) {
-    // Remove os detalhes existentes
     existingDetails.remove();
     expandIcon.classList.remove('bi-chevron-down');
     expandIcon.classList.add('bi-chevron-right');
     tr.classList.remove('table-active');
   } else {
-    // Remove qualquer outro detalhe expandido
     $$('#tblReinc .details-row').forEach(row => row.remove());
     $$('#tblReinc .expand-icon').forEach(icon => {
       icon.classList.remove('bi-chevron-down');
@@ -1212,7 +1258,6 @@ function toggleDetalhesNode(tr, nodeData){
     });
     $$('#tblReinc tr').forEach(row => row.classList.remove('table-active'));
     
-    // Cria novos detalhes
     const detailsRow = document.createElement('tr');
     detailsRow.className = 'details-row slide-in-up';
     detailsRow.setAttribute('data-node', nodeName);
@@ -1238,6 +1283,7 @@ function toggleDetalhesNode(tr, nodeData){
                       <span class="badge bg-primary">#${index + 1}</span>
                       <small class="text-muted">${inc.data}</small>
                     </div>
+                    ${inc.incidente ? `<small class="text-muted d-block mt-1">Incidente: ${inc.incidente}</small>` : ''}
                   </div>
                   <div class="card-body p-3">
                     <div class="mb-2">
@@ -1273,13 +1319,11 @@ function toggleDetalhesNode(tr, nodeData){
       </td>
     `;
     
-    // Insere após a linha clicada
     tr.insertAdjacentElement('afterend', detailsRow);
     expandIcon.classList.remove('bi-chevron-right');
     expandIcon.classList.add('bi-chevron-down');
     tr.classList.add('table-active');
     
-    // Adiciona animação suave
     detailsRow.style.opacity = '0';
     detailsRow.style.transform = 'translateY(-10px)';
     setTimeout(() => {
