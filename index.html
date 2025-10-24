@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -48,7 +49,7 @@
       line-height: 1.6;
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 50px; /* Espaço para a assinatura */
+      padding-bottom: 50px;
     }
     
     .app-header {
@@ -442,7 +443,86 @@
       color: #555;
       font-weight: 500;
     }
-    
+
+    /* Cabeçalhos ordenáveis */
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .sortable-header:hover {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    .sortable-header.sorted-asc::after {
+      content: " ↑";
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .sortable-header.sorted-desc::after {
+      content: " ↓";
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    /* Campo de busca */
+    .search-box {
+      position: relative;
+    }
+
+    .search-box .form-control {
+      padding-left: 40px;
+    }
+
+    .search-box .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    /* Contador de incidentes fixo */
+    .incident-counter {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 6px 12px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--glass-border);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      margin-right: 10px;
+    }
+
+    .incident-counter i {
+      margin-right: 5px;
+    }
+
+    /* Botão de atualizar discreto */
+    .btn-refresh {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+      margin-right: 10px;
+    }
+
+    .btn-refresh:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      transform: rotate(180deg);
+    }
+
     @media (max-width: 768px) {
       .sidebar {
         min-height: auto;
@@ -466,6 +546,16 @@
         margin: 20px auto 10px;
         width: 90%;
         border-radius: 8px;
+      }
+
+      .incident-counter {
+        margin-right: 5px;
+        margin-bottom: 10px;
+      }
+
+      .btn-refresh {
+        margin-right: 5px;
+        margin-bottom: 10px;
       }
     }
   </style>
@@ -518,9 +608,18 @@
         <section class="tab-pane fade show active" id="tabCluster">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Incidentes por Cluster</h5>
-            <button class="btn btn-primary btn-sm" id="btnPDFCluster">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countCluster">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFCluster">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
           <div class="row">
             <div class="col-12 col-lg-5 mb-4">
@@ -529,8 +628,8 @@
                   <table class="table table-sm table-hover" id="tblCluster">
                     <thead class="table-light">
                       <tr>
-                        <th>Cluster</th>
-                        <th class="text-end">Incidentes</th>
+                        <th class="sortable-header" data-column="cluster">Cluster</th>
+                        <th class="sortable-header text-end" data-column="count">Incidentes</th>
                       </tr>
                     </thead>
                     <tbody></tbody>
@@ -555,9 +654,18 @@
               </button>
               <h5 class="m-0 section-title" id="tituloCidade">Incidentes por Cidade</h5>
             </div>
-            <button class="btn btn-primary btn-sm" id="btnPDFCidade">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countCidade">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFCidade">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
           <div class="row">
             <div class="col-12 col-lg-5 mb-4">
@@ -566,8 +674,8 @@
                   <table class="table table-sm table-hover" id="tblCidade">
                     <thead class="table-light">
                       <tr>
-                        <th>Cidade</th>
-                        <th class="text-end">Incidentes</th>
+                        <th class="sortable-header" data-column="cidade">Cidade</th>
+                        <th class="sortable-header text-end" data-column="count">Incidentes</th>
                       </tr>
                     </thead>
                     <tbody></tbody>
@@ -587,23 +695,65 @@
         <section class="tab-pane fade" id="tabQOE">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">QOE Pré vs Pós</h5>
-            <button class="btn btn-primary btn-sm" id="btnPDFQOE">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countQOE">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFQOE">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
+          
+          <!-- Filtros para QOE -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card-custom p-3">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Filtrar por Cluster:</label>
+                    <select class="form-select" id="filtroClusterQOE">
+                      <option value="">Todos os Clusters</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Filtrar por Produtividade:</label>
+                    <select class="form-select" id="filtroProdutividadeQOE">
+                      <option value="todos">Todos os Incidentes</option>
+                      <option value="produtivo">Apenas Produtivos</option>
+                      <option value="improdutivo">Apenas Improdutivos</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-12">
+                    <div class="search-box">
+                      <i class="bi bi-search search-icon"></i>
+                      <input type="text" class="form-control" id="searchNodeQOE" placeholder="Buscar por Node...">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="card-custom p-4">
             <div class="table-responsive">
               <table class="table table-sm table-hover" id="tblQoeNode">
                 <thead class="table-light">
                   <tr>
-                    <th>Node</th>
-                    <th>Cluster</th>
-                    <th>Cidade</th>
-                    <th class="text-end"><strong>Pré</strong></th>
-                    <th class="text-end"><strong>Pós</strong></th>
-                    <th class="text-end"><strong>QOE 24h</strong></th>
-                    <th class="text-end">Melhoria %</th>
-                    <th>Status</th>
+                    <th class="sortable-header" data-column="node">Node</th>
+                    <th class="sortable-header" data-column="cluster">Cluster</th>
+                    <th class="sortable-header" data-column="cidade">Cidade</th>
+                    <th class="sortable-header text-end" data-column="pre"><strong>Pré</strong></th>
+                    <th class="sortable-header text-end" data-column="pos"><strong>Pós</strong></th>
+                    <th class="sortable-header text-end" data-column="qoe24h"><strong>QOE 24h</strong></th>
+                    <th class="sortable-header text-end" data-column="melhoria">Melhoria %</th>
+                    <th class="sortable-header" data-column="status">Status</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -616,10 +766,50 @@
         <section class="tab-pane fade" id="tabFechamento">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Tipo de Fechamento</h5>
-            <button class="btn btn-primary btn-sm" id="btnPDFFechamento">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countFechamento">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFFechamento">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
+          
+          <!-- Filtro de Produtividade -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card-custom p-3">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Filtrar por Produtividade:</label>
+                    <select class="form-select" id="filtroProdutividade">
+                      <option value="todos">Todos os Incidentes</option>
+                      <option value="produtivo">Apenas Produtivos</option>
+                      <option value="improdutivo">Apenas Improdutivos</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="d-flex justify-content-end align-items-center h-100">
+                      <div class="text-center me-4">
+                        <div class="fw-bold text-success fs-5" id="percentualProdutivo">0%</div>
+                        <small class="text-muted">Produtivo</small>
+                      </div>
+                      <div class="text-center">
+                        <div class="fw-bold text-danger fs-5" id="percentualImprodutivo">0%</div>
+                        <small class="text-muted">Improdutivo</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="row">
             <div class="col-12 col-lg-6 mb-4">
               <div class="chart-wrap">
@@ -632,9 +822,9 @@
                   <table class="table table-sm table-hover" id="tblFechamento">
                     <thead class="table-light">
                       <tr>
-                        <th>Tipo</th>
-                        <th class="text-end">Volume</th>
-                        <th class="text-end">% </th>
+                        <th class="sortable-header" data-column="tipo">Tipo</th>
+                        <th class="sortable-header text-end" data-column="volume">Volume</th>
+                        <th class="sortable-header text-end" data-column="percentual">% </th>
                       </tr>
                     </thead>
                     <tbody></tbody>
@@ -649,19 +839,28 @@
         <section class="tab-pane fade" id="tabReinc">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Log de Reincidência</h5>
-            <button class="btn btn-primary btn-sm" id="btnPDFReinc">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countReinc">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFReinc">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
           <div class="card-custom p-4">
             <div class="table-responsive">
               <table class="table table-sm table-hover" id="tblReinc">
                 <thead class="table-light">
                   <tr>
-                    <th>Node</th>
-                    <th>Cluster</th>
-                    <th>Cidade</th>
-                    <th class="text-center">Ocorrências</th>
+                    <th class="sortable-header" data-column="node">Node</th>
+                    <th class="sortable-header" data-column="cluster">Cluster</th>
+                    <th class="sortable-header" data-column="cidade">Cidade</th>
+                    <th class="sortable-header text-center" data-column="ocorrencias">Ocorrências</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -674,10 +873,50 @@
         <section class="tab-pane fade" id="tabResumo">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="m-0 section-title">Dashboard Resumo</h5>
-            <button class="btn btn-primary btn-sm" id="btnPDFResumo">
-              <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
-            </button>
+            <div class="d-flex align-items-center">
+              <button class="btn-refresh" title="Atualizar página" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <span class="incident-counter">
+                <i class="bi bi-database"></i>
+                <span id="countResumo">0</span>
+              </span>
+              <button class="btn btn-primary btn-sm" id="btnPDFResumo">
+                <i class="bi bi-filetype-pdf me-1"></i> Exportar PDF
+              </button>
+            </div>
           </div>
+          
+          <!-- Filtro de Produtividade no Dashboard -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card-custom p-3">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Filtrar por Produtividade:</label>
+                    <select class="form-select" id="filtroProdutividadeDashboard">
+                      <option value="todos">Todos os Incidentes</option>
+                      <option value="produtivo">Apenas Produtivos</option>
+                      <option value="improdutivo">Apenas Improdutivos</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="d-flex justify-content-end align-items-center h-100">
+                      <div class="text-center me-4">
+                        <div class="fw-bold text-success fs-5" id="percentualProdutivoDashboard">0%</div>
+                        <small class="text-muted">Produtivo</small>
+                      </div>
+                      <div class="text-center">
+                        <div class="fw-bold text-danger fs-5" id="percentualImprodutivoDashboard">0%</div>
+                        <small class="text-muted">Improdutivo</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div id="cardsResumo" class="row g-4"></div>
         </section>
       </div>
@@ -698,20 +937,216 @@ const $$=(s,c=document)=>Array.from(c.querySelectorAll(s));
 const $=(s,c=document)=>c.querySelector(s);
 let DATA_ALL=[], RAW=[], charts={};
 let selectedCluster = null;
+let filtroProdutividade = 'todos';
+let filtroClusterQOE = '';
+let currentSort = { column: null, direction: 'asc' };
+
+/* ================= Atualizar Contadores ================= */
+function updateCounters() {
+  const total = RAW.length;
+  const dadosFiltradosQOE = obterDadosFiltradosQOE();
+  
+  // CORREÇÃO: REMOVER "INCIDENTES" DO JAVASCRIPT - APENAS NÚMERO
+  $$('.incident-counter span').forEach(span => {
+    span.textContent = total.toLocaleString('pt-BR');
+  });
+  
+  // Contador específico para QOE (com filtros aplicados)
+  $('#countQOE').textContent = dadosFiltradosQOE.length.toLocaleString('pt-BR');
+}
+
+/* ================= Classificação Produtivo/Improdutivo ================= */
+function classificarProdutividade(solucao) {
+  const solucaoStr = String(solucao || '').toLowerCase().trim();
+  
+  // Verificar se a solução contém algum dos termos improdutivos
+  const termosImprodutivos = [
+    'n. s intervenção',
+    'n. s intervencao',
+    'n. sem intervenção',
+    'n. sem intervencao',
+    'n. durante a identificação',
+    'n. durante a identificacao',
+    'cleardate'
+  ];
+  
+  // Verificar se algum termo improdutivo está presente na solução
+  const isImprodutivo = termosImprodutivos.some(termo => 
+    solucaoStr.includes(termo)
+  );
+  
+  return isImprodutivo ? 'improdutivo' : 'produtivo';
+}
+
+function calcularPercentuaisProdutividade(dados) {
+  const total = dados.length;
+  if (total === 0) return { produtivo: 0, improdutivo: 0 };
+  
+  const produtivo = dados.filter(row => classificarProdutividade(row.SOLUÇÃO) === 'produtivo').length;
+  const improdutivo = total - produtivo;
+  
+  return {
+    produtivo: (produtivo / total * 100).toFixed(1),
+    improdutivo: (improdutivo / total * 100).toFixed(1)
+  };
+}
+
+function atualizarPercentuais() {
+  const percentuais = calcularPercentuaisProdutividade(RAW);
+  
+  // Atualizar na aba Fechamento
+  $('#percentualProdutivo').textContent = `${percentuais.produtivo}%`;
+  $('#percentualImprodutivo').textContent = `${percentuais.improdutivo}%`;
+  
+  // Atualizar na aba Dashboard
+  $('#percentualProdutivoDashboard').textContent = `${percentuais.produtivo}%`;
+  $('#percentualImprodutivoDashboard').textContent = `${percentuais.improdutivo}%`;
+}
+
+function obterDadosFiltrados() {
+  let dadosFiltrados = RAW;
+  
+  // Aplicar filtro de produtividade
+  if (filtroProdutividade !== 'todos') {
+    dadosFiltrados = dadosFiltrados.filter(row => classificarProdutividade(row.SOLUÇÃO) === filtroProdutividade);
+  }
+  
+  return dadosFiltrados;
+}
+
+function obterDadosFiltradosQOE() {
+  let dadosFiltrados = RAW;
+  
+  // Aplicar filtro de cluster para QOE
+  if (filtroClusterQOE) {
+    dadosFiltrados = dadosFiltrados.filter(row => row.Cluster === filtroClusterQOE);
+  }
+  
+  // Aplicar filtro de produtividade para QOE
+  const filtroProdutividadeQOE = $('#filtroProdutividadeQOE').value;
+  if (filtroProdutividadeQOE !== 'todos') {
+    dadosFiltrados = dadosFiltrados.filter(row => classificarProdutividade(row.SOLUÇÃO) === filtroProdutividadeQOE);
+  }
+  
+  // Aplicar busca por Node
+  const searchTerm = $('#searchNodeQOE').value.toLowerCase().trim();
+  if (searchTerm) {
+    dadosFiltrados = dadosFiltrados.filter(row => 
+      row.Node.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  return dadosFiltrados;
+}
+
+/* ================= Atualizar Filtros QOE ================= */
+function atualizarFiltrosQOE() {
+  // Atualizar filtro de clusters
+  const clusters = [...new Set(RAW.map(r => r.Cluster))].sort();
+  const selectCluster = $('#filtroClusterQOE');
+  selectCluster.innerHTML = '<option value="">Todos os Clusters</option>' + 
+    clusters.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+/* ================= Ordenação de Tabelas ================= */
+function initSorting() {
+  // Adicionar event listeners para todos os cabeçalhos ordenáveis
+  $$('.sortable-header').forEach(header => {
+    header.addEventListener('click', function() {
+      const table = this.closest('table');
+      const columnName = this.getAttribute('data-column');
+      
+      sortTable(table, columnName);
+    });
+  });
+}
+
+function sortTable(table, columnName) {
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  
+  // Determinar direção da ordenação
+  const isSameColumn = currentSort.column === columnName;
+  const direction = isSameColumn && currentSort.direction === 'asc' ? 'desc' : 'asc';
+  
+  // Ordenar linhas
+  rows.sort((a, b) => {
+    let aValue, bValue;
+    
+    // Obter valores baseados na coluna
+    switch(columnName) {
+      case 'cluster':
+      case 'cidade':
+      case 'node':
+      case 'tipo':
+      case 'status':
+        aValue = a.cells[Array.from(a.cells).findIndex(cell => cell.textContent.includes(a.querySelector('td').textContent))].textContent.trim();
+        bValue = b.cells[Array.from(b.cells).findIndex(cell => cell.textContent.includes(b.querySelector('td').textContent))].textContent.trim();
+        break;
+      case 'count':
+      case 'volume':
+      case 'percentual':
+      case 'pre':
+      case 'pos':
+      case 'qoe24h':
+      case 'melhoria':
+      case 'ocorrencias':
+        aValue = parseFloat(a.cells[Array.from(a.cells).findIndex(cell => cell.classList.contains('text-end'))].textContent.replace('%', '').replace('—', '0')) || 0;
+        bValue = parseFloat(b.cells[Array.from(b.cells).findIndex(cell => cell.classList.contains('text-end'))].textContent.replace('%', '').replace('—', '0')) || 0;
+        break;
+      default:
+        aValue = a.cells[0].textContent.trim();
+        bValue = b.cells[0].textContent.trim();
+    }
+    
+    if (direction === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
+  });
+  
+  // Remover linhas existentes
+  while (tbody.firstChild) {
+    tbody.removeChild(tbody.firstChild);
+  }
+  
+  // Adicionar linhas ordenadas
+  rows.forEach(row => tbody.appendChild(row));
+  
+  // Atualizar estado e indicadores visuais
+  updateSortIndicators(columnName, direction);
+}
+
+function updateSortIndicators(columnName, direction) {
+  // Remover indicadores anteriores
+  $$('.sortable-header').forEach(header => {
+    header.classList.remove('sorted-asc', 'sorted-desc');
+  });
+  
+  // Adicionar indicador atual
+  $$('.sortable-header').forEach(header => {
+    if (header.getAttribute('data-column') === columnName) {
+      header.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+  });
+  
+  currentSort = { column: columnName, direction };
+}
 
 /* ================= Mapeamento flexível de cabeçalhos ================= */
 const AUTO_MAP={
   'INCIDENTE':'INCIDENTE',
   'CIDADE':'Cidade',
   'CLUSTER':'Cluster',
-  'HI (DATA E HORA INÍCIO)':'Data',
-  'HI (DATA E HORA INICIO)':'Data',
-  'HI_INICIO':'Data',
-  'HI INICIO':'Data',
-  'HI INÍCIO':'Data',
-  'DATA':'Data',
-  'DATA INICIO':'Data',
-  'DATA INÍCIO':'Data',
+  'HI (DATA E HORA INÍCIO)':'HI_INICIO',
+  'HI (DATA E HORA INICIO)':'HI_INICIO',
+  'HI_INICIO':'HI_INICIO',
+  'HI INICIO':'HI_INICIO',
+  'HI INÍCIO':'HI_INICIO',
+  'DATA':'HI_INICIO', // PRIORIZAR HI SOBRE DATA
+  'DATA INICIO':'HI_INICIO',
+  'DATA INÍCIO':'HI_INICIO',
   'NODE':'Node',
   'NÓ':'Node',
   'QOE PRÉ':'QOE_Pre',
@@ -726,11 +1161,11 @@ const AUTO_MAP={
   'QOE_24H':'QOE_24h',
   'QOE24H':'QOE_24h',
   'QOE 24H PÓS':'QOE_24h',
-  'SOLUÇÃO':'Tipo_Fechamento',
-  'SOLUCAO':'Tipo_Fechamento',
-  'TIPO_FECHAMENTO':'Tipo_Fechamento',
-  'TIPO SOLUCAO':'Tipo_Fechamento',
-  'TIPO SOLUÇÃO':'Tipo_Fechamento'
+  'SOLUÇÃO':'SOLUÇÃO',
+  'SOLUCAO':'SOLUÇÃO',
+  'TIPO_FECHAMENTO':'SOLUÇÃO',
+  'TIPO SOLUCAO':'SOLUÇÃO',
+  'TIPO SOLUÇÃO':'SOLUÇÃO'
 };
 
 function normalizeHeader(str) {
@@ -792,6 +1227,10 @@ function validarData(dataStr) {
       let mes = parseInt(partes[1]) - 1;
       let ano = parseInt(partes[2]);
       
+      if (ano < 100) {
+        ano += 2000;
+      }
+      
       if (mes > 11) {
         [dia, mes] = [mes + 1, dia - 1];
       }
@@ -802,6 +1241,10 @@ function validarData(dataStr) {
   }
   
   data = new Date(dataStr.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
+  if (!isNaN(data.getTime())) return data;
+  
+  // Tentar outros formatos comuns
+  data = new Date(dataStr.replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$2-$1'));
   if (!isNaN(data.getTime())) return data;
   
   return null;
@@ -875,7 +1318,8 @@ function handleFile(file){
           }
         });
         
-        o['Data'] = validarData(String(o['Data'] || ''));
+        // VALIDAR DATA DO HI (QUANDO INCIDENTE CAIU)
+        o['HI_INICIO'] = validarData(String(o['HI_INICIO'] || ''));
         
         ['QOE_Pre', 'QOE_Pos', 'QOE_24h'].forEach(key => {
           if (o[key] !== undefined) {
@@ -887,16 +1331,22 @@ function handleFile(file){
           }
         });
         
-        ['Cluster','Node','Cidade','Tipo_Fechamento','INCIDENTE'].forEach(k=>{
-          o[k] = String(o[k] || '').trim();
-          if(o[k]==='') o[k]='(não informado)';
+        ['Cluster','Node','Cidade','SOLUÇÃO','INCIDENTE'].forEach(k=>{
+          o[k] = String(o[k] || '').trim().toUpperCase(); // CONVERTER PARA MAIÚSCULAS
+          if(o[k]==='') {
+            if (k === 'SOLUÇÃO') {
+              o[k] = 'EM TRATAMENTO'; // ALTERADO PARA MAIÚSCULAS
+            } else {
+              o[k] = '(NÃO INFORMADO)'; // ALTERADO PARA MAIÚSCULAS
+            }
+          }
         });
         
         return o;
       }).filter(row => 
-        row.Cluster !== '(não informado)' || 
-        row.Node !== '(não informado)' || 
-        row.Cidade !== '(não informado)' ||
+        row.Cluster !== '(NÃO INFORMADO)' || 
+        row.Node !== '(NÃO INFORMADO)' || 
+        row.Cidade !== '(NÃO INFORMADO)' ||
         row.QOE_Pre > 0 || 
         row.QOE_Pos > 0
       );
@@ -907,6 +1357,18 @@ function handleFile(file){
       }
 
       DATA_ALL=rows; RAW=[...rows];
+      
+      // Atualizar contadores
+      updateCounters();
+      
+      // Atualizar percentuais de produtividade
+      atualizarPercentuais();
+      
+      // Atualizar filtros da aba QOE
+      atualizarFiltrosQOE();
+      
+      // Inicializar ordenação
+      initSorting();
       
       renderAll();
       showToast(`✅ ${rows.length} incidentes carregados com sucesso`, 'success');
@@ -927,7 +1389,8 @@ function colorByValue(v){
 }
 
 function renderQoe(){
-  const arr = aggregateQoe(RAW, ['Node','Cluster','Cidade']);
+  const dadosFiltrados = obterDadosFiltradosQOE();
+  const arr = aggregateQoe(dadosFiltrados, ['Node','Cluster','Cidade']);
   $('#tblQoeNode tbody').innerHTML = arr.map(r => {
     // Calcular melhoria e status
     const { melhoria, status } = calcularMelhoriaStatus(r.qoePre, r.qoePos, r.qoe24h);
@@ -978,7 +1441,8 @@ function aggregateQoe(rows,keys){
 
 /* ================= Incidentes por Cluster ================= */
 function renderCluster(){
-  const grp={}; RAW.forEach(r=>{grp[r.Cluster]=(grp[r.Cluster]||0)+1});
+  const dadosFiltrados = obterDadosFiltrados();
+  const grp={}; dadosFiltrados.forEach(r=>{grp[r.Cluster]=(grp[r.Cluster]||0)+1});
   const arr=Object.entries(grp).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
   
   const tbody = $('#tblCluster tbody');
@@ -1032,7 +1496,8 @@ function renderCluster(){
 function showCidadesPorCluster(cluster) {
   selectedCluster = cluster;
   
-  const filteredData = RAW.filter(r => r.Cluster === cluster);
+  const dadosFiltrados = obterDadosFiltrados();
+  const filteredData = dadosFiltrados.filter(r => r.Cluster === cluster);
   
   const grp = {};
   filteredData.forEach(r => { grp[r.Cidade] = (grp[r.Cidade] || 0) + 1 });
@@ -1088,7 +1553,8 @@ function showCidadesPorCluster(cluster) {
 
 /* ================= Tipo de Fechamento ================= */
 function renderFechamento(){
-  const grp={}; RAW.forEach(r=>{grp[r.Tipo_Fechamento]=(grp[r.Tipo_Fechamento]||0)+1});
+  const dadosFiltrados = obterDadosFiltrados();
+  const grp={}; dadosFiltrados.forEach(r=>{grp[r.SOLUÇÃO]=(grp[r.SOLUÇÃO]||0)+1});
   const total=Object.values(grp).reduce((a,b)=>a+b,0)||1;
   const arr=Object.entries(grp).map(([t,v])=>({t,v})).sort((a,b)=>b.v-a.v);
   $('#tblFechamento tbody').innerHTML=arr.map(e=>`<tr class="slide-in-up">
@@ -1119,7 +1585,8 @@ function renderFechamento(){
 
 /* ================= Reincidência ================= */
 function renderReinc(){
-  const byNode = groupBy(RAW, 'Node');
+  const dadosFiltrados = obterDadosFiltrados();
+  const byNode = groupBy(dadosFiltrados, 'Node');
   const reinc = Object.entries(byNode)
     .filter(([_, list]) => list.length > 1)
     .map(([n, l]) => ({
@@ -1128,8 +1595,7 @@ function renderReinc(){
       Cidade: l[0].Cidade, 
       Count: l.length,
       Incidents: l.map(x => ({
-        solucao: x.Tipo_Fechamento || '(sem solução)',
-        data: x.Data ? formatarData(x.Data) : '(sem data)',
+        solucao: x.SOLUÇÃO || '(SEM SOLUÇÃO)',
         qoePre: x.QOE_Pre || 0,
         qoePos: x.QOE_Pos || 0,
         cluster: x.Cluster || '',
@@ -1175,7 +1641,7 @@ function renderReinc(){
   });
 }
 
-/* ================= Toggle Detalhes ================= */
+/* ================= Toggle Detalhes - SEM DATA ================= */
 function toggleDetalhesNode(tr, nodeData){
   const expandIcon = tr.querySelector('.expand-icon');
   const nodeName = nodeData.Node;
@@ -1218,7 +1684,6 @@ function toggleDetalhesNode(tr, nodeData){
                   <div class="card-header bg-white py-2">
                     <div class="d-flex justify-content-between align-items-center">
                       <span class="badge bg-primary">#${index + 1}</span>
-                      <small class="text-muted">${inc.data}</small>
                     </div>
                     ${inc.incidente ? `<small class="text-muted d-block mt-1">Incidente: ${inc.incidente}</small>` : ''}
                   </div>
@@ -1261,37 +1726,54 @@ function toggleDetalhesNode(tr, nodeData){
 
 /* ================= Dashboard ================= */
 function renderResumo(){
-  const byCluster=groupBy(RAW,'Cluster');
-  const wrap=$('#cardsResumo'); wrap.innerHTML='';
-  Object.entries(byCluster).forEach(([cl,rows], index) => {
-    const total=rows.length;
-    const nodes=groupBy(rows,'Node');
-    const reinc=Object.values(nodes).filter(a=>a.length>1).length;
-    const taxa=total?(reinc/Object.keys(nodes).length*100):0;
+  const dadosFiltrados = obterDadosFiltrados();
+  const byCluster=groupBy(dadosFiltrados,'Cluster');
+  
+  // ORDENAR DO PIOR PARA O MELHOR (MAIOR TAXA DE REINCIDÊNCIA PRIMEIRO)
+  const clustersOrdenados = Object.entries(byCluster)
+    .map(([cl,rows]) => {
+      const total=rows.length;
+      const nodes=groupBy(rows,'Node');
+      const reinc=Object.values(nodes).filter(a=>a.length>1).length;
+      const taxa=total?(reinc/Object.keys(nodes).length*100):0;
+      
+      return {
+        cluster: cl,
+        total: total,
+        taxa: taxa,
+        reinc: reinc,
+        nodes: Object.keys(nodes).length
+      };
+    })
+    .sort((a, b) => b.taxa - a.taxa); // ORDENAÇÃO DO MAIOR PARA O MENOR
 
+  const wrap=$('#cardsResumo'); 
+  wrap.innerHTML='';
+  
+  clustersOrdenados.forEach((cl, index) => {
     const card=document.createElement('div'); 
     card.className='col-12 col-md-6 col-lg-4';
     card.style.animationDelay = `${index * 0.1}s`;
     card.innerHTML = `
       <div class="card-custom h-100 p-4">
         <div class="card-body p-0">
-          <h5 class="mb-3 section-title">${cl}</h5>
+          <h5 class="mb-3 section-title">${cl.cluster}</h5>
           <div class="d-flex align-items-center mb-3">
             <div class="me-3">
               <i class="bi bi-exclamation-circle fs-4 text-primary"></i>
             </div>
             <div>
               <div class="text-muted small">Total de Incidentes</div>
-              <div class="h4 mb-0 fw-bold">${total}</div>
+              <div class="h4 mb-0 fw-bold">${cl.total}</div>
             </div>
           </div>
           <div class="d-flex align-items-center">
             <div class="me-3">
-              <i class="bi bi-clock-history fs-4 ${taxa>20?'text-danger':'text-info'}"></i>
+              <i class="bi bi-clock-history fs-4 ${cl.taxa>20?'text-danger':'text-info'}"></i>
             </div>
             <div>
               <div class="text-muted small">Taxa de Reincidência</div>
-              <div class="h5 mb-0 ${taxa>20?'text-danger':'text-info'}">${taxa.toFixed(1)}%</div>
+              <div class="h5 mb-0 ${cl.taxa>20?'text-danger':'text-info'}">${cl.taxa.toFixed(1)}%</div>
             </div>
           </div>
         </div>
@@ -1458,7 +1940,7 @@ function upsertPie(id,labels,data,extra){
 /* ================= Utils ================= */
 function groupBy(a,k){ 
   return a.reduce((acc, current) => {
-    const groupKey = current[k] || '(não informado)';
+    const groupKey = current[k] || '(NÃO INFORMADO)';
     if (!acc[groupKey]) {
       acc[groupKey] = [];
     }
@@ -1469,7 +1951,7 @@ function groupBy(a,k){
 
 function formatarData(data) {
   if (!data || !(data instanceof Date) || isNaN(data.getTime())) {
-    return '(sem data)';
+    return '(SEM DATA)';
   }
   
   try {
@@ -1481,7 +1963,7 @@ function formatarData(data) {
       minute: '2-digit'
     });
   } catch (error) {
-    return '(erro na data)';
+    return '(ERRO NA DATA)';
   }
 }
 
@@ -1552,6 +2034,37 @@ function renderAll(){
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btnVoltarCluster').style.display = 'none';
+  
+  // Event listeners para filtros de produtividade
+  $('#filtroProdutividade').addEventListener('change', function() {
+    filtroProdutividade = this.value;
+    renderAll();
+    updateCounters();
+  });
+  
+  $('#filtroProdutividadeDashboard').addEventListener('change', function() {
+    filtroProdutividade = this.value;
+    renderAll();
+    updateCounters();
+  });
+  
+  // Event listeners para filtros da aba QOE
+  $('#filtroClusterQOE').addEventListener('change', function() {
+    filtroClusterQOE = this.value;
+    renderQoe();
+    updateCounters();
+  });
+  
+  $('#filtroProdutividadeQOE').addEventListener('change', function() {
+    renderQoe();
+    updateCounters();
+  });
+  
+  // Event listener para busca por Node
+  $('#searchNodeQOE').addEventListener('input', function() {
+    renderQoe();
+    updateCounters();
+  });
   
   document.getElementById('btnVoltarCluster').addEventListener('click', function() {
     selectedCluster = null;
